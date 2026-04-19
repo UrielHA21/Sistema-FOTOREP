@@ -10,7 +10,7 @@ import ReportEditModal from './components/ReportEditModal';
 export default function DashboardPage() {
   const navigate = useNavigate();
   const { reportes, loading, error, eliminarReporte } = useReportsList();
-  
+
   const [editingReporte, setEditingReporte] = useState<Reporte | null>(null);
 
   const handleNewReport = () => {
@@ -18,25 +18,34 @@ export default function DashboardPage() {
   };
 
   const actionButton = (
-    <Button 
-      leftSection={<IconPlus size={16} />} 
-      color="blue" 
-      onClick={handleNewReport}
-    >
-      Nuevo Reporte
-    </Button>
+    <Group gap="sm">
+      <Button
+        variant="light"
+        color="gray"
+        onClick={() => navigate('/historial-pdf')}
+      >
+        Historial de PDFs
+      </Button>
+      <Button
+        leftSection={<IconPlus size={16} />}
+        color="blue"
+        onClick={handleNewReport}
+      >
+        Nuevo Reporte
+      </Button>
+    </Group>
   );
 
   return (
     <Box>
       <Group justify="space-between" mb="xl">
-        <Title order={2}>Reportes</Title>
+        <Title order={2}>Formato de Evidencia Fotográfica</Title>
       </Group>
 
-      <Flex 
-        gap="md" 
-        mb="xl" 
-        direction={{ base: 'column', sm: 'row' }} 
+      <Flex
+        gap="md"
+        mb="xl"
+        direction={{ base: 'column', sm: 'row' }}
         justify="space-between"
       >
         <TextInput
@@ -76,10 +85,10 @@ export default function DashboardPage() {
       )}
 
       {/* MODAL DE EDICIÓN AISLADO CON LAZY LOAD */}
-      <ReportEditModal 
-          opened={!!editingReporte} 
-          onClose={() => setEditingReporte(null)} 
-          reporte={editingReporte} 
+      <ReportEditModal
+        opened={!!editingReporte}
+        onClose={() => setEditingReporte(null)}
+        reporte={editingReporte}
       />
     </Box>
   );

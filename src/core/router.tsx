@@ -11,7 +11,7 @@ import AdminCatalogosPage from '../modules/admin/AdminCatalogosPage';
 import MassUploadPage from '../modules/reports/MassUploadPage';
 import PrevisualizacionPdfPage from '../modules/export/PrevisualizacionPdfPage';
 import ExportacionPage from '../modules/export/ExportacionPage';
-
+import HistorialPDFPage from '../modules/export/HistorialPDFPage';
 
 export const router = createBrowserRouter([
   {
@@ -29,6 +29,10 @@ export const router = createBrowserRouter([
           {
             index: true,
             element: <DashboardPage />,
+          },
+          {
+            path: 'historial-pdf',
+            element: <HistorialPDFPage />
           },
           {
             path: 'reportes/nuevo',

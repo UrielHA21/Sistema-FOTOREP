@@ -11,7 +11,12 @@ import {
   clip,
   endPath,
 } from "pdf-lib";
-import fetch from "node-fetch";
+import * as admin from "firebase-admin";
+
+// ─── Initialize Firebase Admin (idempotente) ─────────────────────────────────
+if (!admin.apps.length) {
+  admin.initializeApp();
+}
 
 // ─── Global options (applies to all v2 functions) ────────────────────────────
 setGlobalOptions({ maxInstances: 10 });
@@ -536,8 +541,8 @@ async function drawLayout3(
 
 export const generarReportePDF = onCall(
   {
-    memory: "2GiB",
-    timeoutSeconds: 300,
+    memory: "4GiB",
+    timeoutSeconds: 540,
     maxInstances: 10,
   },
   async (request) => {
@@ -610,9 +615,43 @@ export const generarReportePDF = onCall(
         });
       }
 
-      // ── Serialize ──
-      const pdfBase64 = await pdfDoc.saveAsBase64();
-      return { success: true, pdfBase64 };
+      // ── Serialize & upload to Cloud Storage ──
+      const pdfBytes = await pdfDoc.save();
+      const pdfBuffer = Buffer.from(pdfBytes);
+
+      // Calcular nombre dinámico (fallback a valores seguros)
+      const sanitize = (s: string) => s.replace(/[<>:"/\\|?*]/g, '').replace(/\s+/g, ' ').trim();
+      const areaNombre = sanitize(data.reporteMeta.area || 'AREA');
+      const tipoFormato = sanitize(data.reporteMeta.tipoFormato || 'N');
+      const nombreArchivo = `FORMATO DE FOTOS ${areaNombre} TIPO ${tipoFormato}.pdf`;
+
+      const bucket = admin.storage().bucket();
+      const storagePath = `reportes_exportados/${Date.now()}_${nombreArchivo}`;
+      const file = bucket.file(storagePath);
+
+      await file.save(pdfBuffer, {
+        metadata: { contentType: "application/pdf" },
+      });
+
+      // Signed URL válida por 2 horas
+      const [signedUrl] = await file.getSignedUrl({
+        action: "read",
+        expires: Date.now() + 2 * 60 * 60 * 1000,
+      });
+
+      // Guardar en Firestore: colección "exportaciones"
+      const userId = request.auth?.uid || "unknown";
+      await admin.firestore().collection("exportaciones").add({
+        nombre: nombreArchivo,
+        storagePath: storagePath,
+        fecha: admin.firestore.FieldValue.serverTimestamp(),
+        area: areaNombre,
+        tipo: tipoFormato,
+        circuitoNombre: data.reporteMeta.circuito || "",
+        userId: userId
+      });
+
+      return { success: true, url: signedUrl, fileName: nombreArchivo };
     } catch (err) {
       console.error("Error generando PDF:", err);
       throw new HttpsError(
@@ -622,3 +661,63 @@ export const generarReportePDF = onCall(
     }
   }
 );
+
+// ─── Cloud Function: Eliminar Exportación ─────────────────────────────────────
+export const eliminarExportacion = onCall(async (request) => {
+  // 1. Validar autenticación
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "Debes estar autenticado.");
+  }
+
+  const { id } = request.data as { id: string };
+  if (!id) {
+    throw new HttpsError("invalid-argument", "Se requiere el ID del documento.");
+  }
+
+  const db = admin.firestore();
+  const docRef = db.collection("exportaciones").doc(id);
+  const docSnap = await docRef.get();
+
+  if (!docSnap.exists) {
+    throw new HttpsError("not-found", "El registro de exportación no existe.");
+  }
+
+  const data = docSnap.data();
+  
+  // 2. Control de Acceso RBAC: Dueño o Admin
+  // Asumimos que los roles vienen en los custom claims (ej. request.auth.token.role === 'admin')
+  // O podemos validar el creador.
+  const isOwner = data?.userId === request.auth.uid;
+  const isAdmin = request.auth.token?.role === "admin";
+
+  if (!isOwner && !isAdmin) {
+    throw new HttpsError(
+      "permission-denied",
+      "No tienes permisos para eliminar esta exportación."
+    );
+  }
+
+  try {
+    // 3. Eliminar de Cloud Storage
+    if (data?.storagePath) {
+      const bucket = admin.storage().bucket();
+      const file = bucket.file(data.storagePath);
+      // Validar que el archivo existe antes de borrar
+      const [exists] = await file.exists();
+      if (exists) {
+        await file.delete();
+      }
+    }
+
+    // 4. Eliminar de Firestore
+    await docRef.delete();
+
+    return { success: true, message: "Exportación eliminada correctamente." };
+  } catch (error) {
+    console.error("Error al eliminar exportación:", error);
+    throw new HttpsError(
+      "internal",
+      "Ocurrió un error al intentar eliminar la exportación y el archivo."
+    );
+  }
+});

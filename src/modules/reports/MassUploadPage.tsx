@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Container, Title, Box, Group, Button, Center, Loader, SimpleGrid, Paper, Text, ActionIcon, Image, Affix, Card, Alert, SegmentedControl } from '@mantine/core';
 import { Dropzone, IMAGE_MIME_TYPE, type FileWithPath } from '@mantine/dropzone';
-import { IconChevronLeft, IconHistory, IconCheck, IconTrash, IconPlayerPlay, IconInfoCircle, IconArrowUp } from '@tabler/icons-react';
+import { IconChevronLeft, IconHistory, IconCheck, IconTrash, IconPlayerPlay, IconInfoCircle, IconArrowUp, IconX } from '@tabler/icons-react';
 import { useParesFotograficos } from './hooks/useParesFotograficos';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../../core/firebase';
@@ -99,27 +99,69 @@ export default function MassUploadPage() {
 
         <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
           <Paper withBorder p={4} radius="md">
-            <Dropzone disabled={isProcessing} onDrop={(f) => setFilesAntes(p => [...p, ...f])} accept={IMAGE_MIME_TYPE} style={{ borderStyle: 'dashed', borderWidth: 2, backgroundColor: 'var(--mantine-color-gray-0)' }} radius="sm">
-                <Center h={45}>
-                  <Group gap="xs" style={{ pointerEvents: 'none' }}>
-                    <IconHistory size={20} color="var(--mantine-color-blue-6)" />
-                    <Box>
-                        <Text fw={600} size="sm">Múltiples: ANTES</Text>
-                    </Box>
-                  </Group>
+            <Dropzone 
+               disabled={isProcessing} 
+               onDrop={(f) => setFilesAntes(p => [...p, ...f])} 
+               accept={IMAGE_MIME_TYPE} 
+               style={{ borderStyle: 'dashed', borderWidth: 2 }} 
+               bg="gray.0"
+               radius="sm"
+            >
+                <Center h={45} style={{ pointerEvents: 'none' }}>
+                  <Dropzone.Accept>
+                    <Group gap="xs">
+                      <IconArrowUp size={20} color="var(--mantine-color-blue-6)" />
+                      <Text fw={600} size="sm" c="blue.6">Suelta imágenes aquí</Text>
+                    </Group>
+                  </Dropzone.Accept>
+                  <Dropzone.Reject>
+                    <Group gap="xs">
+                      <IconX size={20} color="var(--mantine-color-red-6)" />
+                      <Text fw={600} size="sm" c="red.6">Tipo no soportado</Text>
+                    </Group>
+                  </Dropzone.Reject>
+                  <Dropzone.Idle>
+                    <Group gap="xs">
+                      <IconHistory size={20} color="var(--mantine-color-blue-6)" />
+                      <Box>
+                          <Text fw={600} size="sm">Múltiples: ANTES</Text>
+                      </Box>
+                    </Group>
+                  </Dropzone.Idle>
                 </Center>
             </Dropzone>
           </Paper>
 
           <Paper withBorder p={4} radius="md">
-            <Dropzone disabled={isProcessing} onDrop={(f) => setFilesDespues(p => [...p, ...f])} accept={IMAGE_MIME_TYPE} style={{ borderStyle: 'dashed', borderWidth: 2, backgroundColor: 'var(--mantine-color-gray-0)' }} radius="sm">
-                <Center h={45}>
-                  <Group gap="xs" style={{ pointerEvents: 'none' }}>
-                    <IconCheck size={20} color="var(--mantine-color-green-6)" />
-                    <Box>
-                        <Text fw={600} size="sm">Múltiples: DESPUÉS</Text>
-                    </Box>
-                  </Group>
+            <Dropzone 
+               disabled={isProcessing} 
+               onDrop={(f) => setFilesDespues(p => [...p, ...f])} 
+               accept={IMAGE_MIME_TYPE} 
+               style={{ borderStyle: 'dashed', borderWidth: 2 }} 
+               bg="gray.0"
+               radius="sm"
+            >
+                <Center h={45} style={{ pointerEvents: 'none' }}>
+                  <Dropzone.Accept>
+                    <Group gap="xs">
+                      <IconArrowUp size={20} color="var(--mantine-color-green-6)" />
+                      <Text fw={600} size="sm" c="green.6">Suelta imágenes aquí</Text>
+                    </Group>
+                  </Dropzone.Accept>
+                  <Dropzone.Reject>
+                    <Group gap="xs">
+                      <IconX size={20} color="var(--mantine-color-red-6)" />
+                      <Text fw={600} size="sm" c="red.6">Tipo no soportado</Text>
+                    </Group>
+                  </Dropzone.Reject>
+                  <Dropzone.Idle>
+                    <Group gap="xs">
+                      <IconCheck size={20} color="var(--mantine-color-green-6)" />
+                      <Box>
+                          <Text fw={600} size="sm">Múltiples: DESPUÉS</Text>
+                      </Box>
+                    </Group>
+                  </Dropzone.Idle>
                 </Center>
             </Dropzone>
           </Paper>

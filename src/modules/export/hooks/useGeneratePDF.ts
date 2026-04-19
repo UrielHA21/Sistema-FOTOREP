@@ -33,7 +33,8 @@ interface CloudFunctionPayload {
 
 interface CloudFunctionResult {
   success: boolean;
-  pdfBase64: string;
+  url: string;
+  fileName: string;
 }
 
 // ─── Hook ─────────────────────────────────────────────────────────────────────
@@ -126,21 +127,27 @@ export function useGeneratePDF() {
       // ── D: Call Cloud Function ──
       const generarPDF = httpsCallable<CloudFunctionPayload, CloudFunctionResult>(
         functions,
-        'generarReportePDF'
+        'generarReportePDF',
+        { timeout: 540000 }
       );
       const result = await generarPDF(payload);
 
-      if (!result.data?.success || !result.data?.pdfBase64) {
-        throw new Error('La función retornó una respuesta vacía o fallida.');
+      // Validar que la URL exista en la respuesta del servidor
+      if (result.data && result.data.url) {
+        const link = document.createElement('a');
+        link.href = result.data.url;
+        link.setAttribute('target', '_blank'); // Respaldo seguro
+        link.setAttribute('download', result.data.fileName || 'Reporte_FOTOREP.pdf');
+        
+        // Es imperativo agregarlo al DOM para que funcione en Firefox y Chrome
+        document.body.appendChild(link);
+        link.click();
+        
+        // Limpiar el DOM
+        link.parentNode?.removeChild(link);
+      } else {
+        throw new Error("El servidor completó la petición pero no devolvió una URL válida.");
       }
-
-      // ── E: Trigger browser download ──
-      const link = document.createElement('a');
-      link.href = `data:application/pdf;base64,${result.data.pdfBase64}`;
-      link.download = nombreArchivo;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
 
       notifications.update({
         id: notifId,

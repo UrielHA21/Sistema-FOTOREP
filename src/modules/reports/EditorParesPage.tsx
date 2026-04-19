@@ -95,20 +95,20 @@ export default function EditorParesPage() {
           Volver a Circuitos
         </Button>
 
-        <Group justify="space-between" align="flex-end">
-          <Box>
+        <Group justify="space-between" align="center">
+          <Group gap="xl" align="center">
              <Group align="center" gap="sm">
               <IconPlug size={28} color="var(--mantine-color-blue-6)" />
               <Title order={2}>{circuito?.nombre || 'Circuito FLM-XXX'}</Title>
             </Group>
-            <Group mt="md" gap="xl">
+            <Group gap="xl" align="center">
               <Badge color="gray" variant="light" size="lg">Pares: {pares.length}</Badge>
               <Box w={150}>
                  <Text size="xs" c="dimmed" mb={5}>ZOOM FOTOGRÁFICO</Text>
                  <Slider min={1} max={3} step={1} value={zoomLevel} onChange={setZoomLevel} marks={[{value:1, label:'1'}, {value:2, label:'2'}, {value:3, label:'3'}]} label={null} color="gray" size="sm" />
               </Box>
             </Group>
-          </Box>
+          </Group>
 
           <Group>
             <Button variant="default" leftSection={<IconDownload size={16} />} onClick={() => descargarZip(circuito?.nombre)} loading={isZipping} disabled={pares.length === 0}>
