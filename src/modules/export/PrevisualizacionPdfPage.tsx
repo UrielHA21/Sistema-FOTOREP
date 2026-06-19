@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { useParams, useNavigate, useLocation, useBlocker } from 'react-router-dom';
 import {
   Container, Box, Group, Button, Select, Center, Loader, Title, Text,
   Badge, ActionIcon, Tooltip,
@@ -43,6 +43,21 @@ export default function PrevisualizacionPdfPage() {
 
   // ── PDF generation hook ──
   const { isGenerating, downloadPdf } = useGeneratePDF();
+
+  // Bloquear navegación SPA dentro de la aplicación
+  useBlocker(() => isGenerating);
+
+  // Bloquear recarga o cierre de pestaña en el navegador
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (isGenerating) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [isGenerating]);
 
   // Chunking aislado por circuito
   const buildPaginasPorCircuito = (
@@ -121,6 +136,7 @@ export default function PrevisualizacionPdfPage() {
                 onClick={() => navigate(`/reportes/${reporteId}/exportar`)}
                 px={0}
                 style={{ flexShrink: 0 }}
+                disabled={isGenerating}
               >
                 Volver
               </Button>
@@ -165,6 +181,7 @@ export default function PrevisualizacionPdfPage() {
                 onChange={(v) => setParesPorPagina(v || '3')}
                 data={[
                   { value: '1', label: '1 par por página' },
+                  { value: '2', label: '2 pares por página' },
                   { value: '3', label: '3 pares por página' },
                 ]}
                 allowDeselect={false}
@@ -214,6 +231,7 @@ export default function PrevisualizacionPdfPage() {
                   revisaNombre={firmaRevisa.nombre}
                   revisaCargo={firmaRevisa.cargo}
                   paresChunk={chunk}
+                  layoutMode={parseInt(paresPorPagina, 10)}
                 />
               </Box>
             ))}

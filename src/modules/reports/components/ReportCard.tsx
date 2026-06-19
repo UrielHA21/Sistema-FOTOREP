@@ -1,7 +1,9 @@
 import { Card, Badge, Group, Title, Text, Button, ActionIcon, Menu } from '@mantine/core';
 import { useNavigate } from 'react-router-dom';
 import { modals } from '@mantine/modals';
-import { IconDotsVertical, IconEdit, IconTrash, IconDownload } from '@tabler/icons-react';
+import { IconDotsVertical, IconEdit, IconTrash, IconDownload, IconListDetails } from '@tabler/icons-react';
+import { useAccessibilityStore } from '../../accessibility/store';
+import { useMediaQuery } from '@mantine/hooks';
 import type { Reporte } from '../hooks/useReportsList';
 
 interface ReportCardProps {
@@ -12,6 +14,9 @@ interface ReportCardProps {
 
 export default function ReportCard({ reporte, onEliminar, onEdit }: ReportCardProps) {
   const navigate = useNavigate();
+  const { simpleMode } = useAccessibilityStore();
+  const isMobile = useMediaQuery('(max-width: 48em)'); // 768px = sm
+  const showText = !isMobile && !simpleMode;
 
   const handleEdit = () => {
     navigate(`/reportes/${reporte.id}/circuitos`);
@@ -81,12 +86,26 @@ export default function ReportCard({ reporte, onEliminar, onEdit }: ReportCardPr
         Revisor: {reporte.revisorNombre || 'No asignado'}
       </Text>
 
-      <Group justify="flex-end" mt="md" grow>
-        <Button variant="light" color="blue" onClick={handleEdit}>
-          Editar Circuitos
+      <Group justify="flex-end" mt="md" grow={showText}>
+        <Button 
+          variant="light" 
+          color="blue" 
+          onClick={handleEdit}
+          leftSection={<IconListDetails size={18} />}
+          title={!showText ? "Editar Circuitos" : undefined}
+          aria-label="Editar Circuitos"
+        >
+          {showText && "Editar Circuitos"}
         </Button>
-        <Button variant="light" color="indigo" leftSection={<IconDownload size={18} />} onClick={() => navigate(`/reportes/${reporte.id}/exportar`)}>
-          Exportar
+        <Button 
+          variant="light" 
+          color="indigo" 
+          leftSection={<IconDownload size={18} />} 
+          onClick={() => navigate(`/reportes/${reporte.id}/exportar`)}
+          title={!showText ? "Exportar" : undefined}
+          aria-label="Exportar"
+        >
+          {showText && "Exportar"}
         </Button>
       </Group>
     </Card>

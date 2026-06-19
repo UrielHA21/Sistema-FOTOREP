@@ -1,11 +1,9 @@
-import { AppShell, Burger, Group, Title, ActionIcon, Avatar, Menu, Box, Badge } from '@mantine/core';
-import { useDisclosure } from '@mantine/hooks';
+import { AppShell, Group, Title, ActionIcon, Avatar, Menu, Box, Badge } from '@mantine/core';
 import { Outlet, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../modules/auth/store';
 import { IconLogout, IconReportAnalytics, IconDatabase, IconShield } from '@tabler/icons-react';
 
 export default function AppLayout() {
-  const [opened, { toggle }] = useDisclosure();
   const logout      = useAuthStore((state) => state.logout);
   const user        = useAuthStore((state) => state.user);
   const userProfile = useAuthStore((state) => state.userProfile);
@@ -20,12 +18,11 @@ export default function AppLayout() {
   return (
     <AppShell
       header={{ height: 60 }}
-      padding="md"
+      padding={{ base: 'xs', sm: 'md' }}
     >
       <AppShell.Header>
         <Group h="100%" px="md" justify="space-between">
           <Group>
-            <Burger opened={opened} onClick={toggle} hiddenFrom="sm" size="sm" />
             <Group gap={8}>
               <Title order={3} c="blue.7">FOTOREP</Title>
               {/* Indicador visual del rol (solo en desarrollo / para contexto) */}

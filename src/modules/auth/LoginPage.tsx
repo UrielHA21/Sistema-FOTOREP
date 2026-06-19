@@ -1,7 +1,10 @@
-import { useState, type FormEvent } from 'react';
-import { Container, Paper, Title, TextInput, PasswordInput, Button, Alert, Box } from '@mantine/core';
+import { useState, useEffect, type FormEvent } from 'react';
+import { Container, Paper, Title, TextInput, PasswordInput, Button, Alert, Box, Group, Anchor, Modal, Text } from '@mantine/core';
+import { useDisclosure } from '@mantine/hooks';
 import { useAuthStore } from './store';
 import { useNavigate } from 'react-router-dom';
+import { sendPasswordResetEmail } from 'firebase/auth';
+import { auth } from '../../core/firebase';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -9,8 +12,20 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
+  const [resetOpened, { open: openReset, close: closeReset }] = useDisclosure(false);
+  const [resetEmail, setResetEmail] = useState('');
+  const [resetLoading, setResetLoading] = useState(false);
+  const [resetMessage, setResetMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+  
   const login = useAuthStore((state) => state.login);
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/', { replace: true });
+    }
+  }, [isAuthenticated, navigate]);
 
   const handleLogin = async (e: FormEvent) => {
     e.preventDefault();
@@ -18,12 +33,25 @@ export default function LoginPage() {
     setError(null);
     try {
       await login(email, password);
-      // Tras un login exitoso, navegamos a la ruta protegida (Dashboard)
-      navigate('/', { replace: true });
+      // La navegación ahora la maneja el useEffect que escucha el estado isAuthenticated
     } catch (err) {
       setError('Credenciales inválidas');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleResetPassword = async (e: FormEvent) => {
+    e.preventDefault();
+    setResetLoading(true);
+    setResetMessage(null);
+    try {
+      await sendPasswordResetEmail(auth, resetEmail);
+      setResetMessage({ type: 'success', text: 'Se ha enviado un enlace para restablecer la contraseña a tu correo.' });
+    } catch (err: any) {
+      setResetMessage({ type: 'error', text: 'Error al enviar el correo. Verifica que la dirección sea correcta.' });
+    } finally {
+      setResetLoading(false);
     }
   };
 
@@ -63,6 +91,13 @@ export default function LoginPage() {
               value={password}
               onChange={(e) => setPassword(e.currentTarget.value)}
             />
+            
+            <Group justify="flex-end" mt="md">
+              <Anchor component="button" type="button" size="sm" onClick={openReset}>
+                ¿Olvidaste tu contraseña?
+              </Anchor>
+            </Group>
+
             <Button 
               fullWidth 
               mt="xl" 
@@ -75,6 +110,32 @@ export default function LoginPage() {
           </form>
         </Paper>
       </Container>
+
+      <Modal opened={resetOpened} onClose={closeReset} title="Restablecer contraseña" centered>
+        <form onSubmit={handleResetPassword}>
+          <Text size="sm" mb="md" c="dimmed">
+            Ingresa tu correo electrónico para recibir un enlace y restablecer tu contraseña.
+          </Text>
+          
+          {resetMessage && (
+            <Alert color={resetMessage.type === 'success' ? 'green' : 'red'} variant="light" mb="md">
+              {resetMessage.text}
+            </Alert>
+          )}
+
+          <TextInput
+            label="Correo electrónico"
+            placeholder="tu@correo.com"
+            required
+            value={resetEmail}
+            onChange={(e) => setResetEmail(e.currentTarget.value)}
+            data-autofocus
+          />
+          <Button fullWidth mt="md" type="submit" loading={resetLoading}>
+            Enviar enlace
+          </Button>
+        </form>
+      </Modal>
     </Box>
   );
 }

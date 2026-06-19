@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { Container, Grid, Title, Text, Tabs, Paper, Table, Checkbox, Radio, Button, Box, Loader, Center, Group, NumberInput, Progress } from '@mantine/core';
+import { useParams, useNavigate, useBlocker } from 'react-router-dom';
+import { Container, Grid, Title, Text, Tabs, Paper, Table, Checkbox, Radio, Button, Box, Loader, Center, Group, NumberInput, Progress, ScrollArea } from '@mantine/core';
 import { IconFileTypePdf, IconFileZip, IconChevronLeft } from '@tabler/icons-react';
+import { useMediaQuery } from '@mantine/hooks';
 import { collection, getDocs, query, orderBy, getDoc, doc } from 'firebase/firestore';
 import { db } from '../../core/firebase';
 import { useZipExport } from './hooks/useZipExport';
@@ -60,8 +61,24 @@ export default function ExportacionPage() {
    const [selectedCircuits, setSelectedCircuits] = useState<string[]>([]);
    const [exportQuantities, setExportQuantities] = useState<Record<string, number>>({});
    const [paresPorHoja, setParesPorHoja] = useState('3');
+   const isMobile = useMediaQuery('(max-width: 48em)');
 
    const { isExporting, progress, downloadCircuitZip } = useZipExport();
+
+   // Bloquear navegación SPA dentro de la aplicación
+   useBlocker(() => isExporting);
+
+   // Bloquear recarga o cierre de pestaña en el navegador
+   useEffect(() => {
+      const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+         if (isExporting) {
+            e.preventDefault();
+            e.returnValue = '';
+         }
+      };
+      window.addEventListener('beforeunload', handleBeforeUnload);
+      return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+   }, [isExporting]);
    const circuitosNombres = circuitos.reduce((acc, c) => ({ ...acc, [c.id]: c.nombre }), {} as Record<string, string>);
 
    useEffect(() => {
@@ -98,7 +115,7 @@ export default function ExportacionPage() {
 
    return (
       <Container size="xl" py="xl">
-         <Button variant="subtle" color="gray" leftSection={<IconChevronLeft size={16} />} onClick={() => navigate('/')} mb="md" px={0}>
+         <Button variant="subtle" color="gray" leftSection={<IconChevronLeft size={16} />} onClick={() => navigate('/')} mb="md" px={0} disabled={isExporting}>
             Volver al Dashboard
          </Button>
 
@@ -119,58 +136,60 @@ export default function ExportacionPage() {
                      <Text fw={700} size="sm">INVENTARIO DE CIRCUITOS</Text>
                      <Text size="sm" c="dimmed">{selectedCircuits.length} circuitos seleccionados</Text>
                   </Group>
-                  <Table verticalSpacing="sm" striped>
-                     <Table.Thead>
-                        <Table.Tr>
-                           <Table.Th w={40}>
-                              <Checkbox
-                                 checked={allSelected}
-                                 indeterminate={someSelected}
-                                 onChange={(e) => handleSelectAll(e.currentTarget.checked)}
-                              />
-                           </Table.Th>
-                           <Table.Th>Nombre del Circuito</Table.Th>
-                           <Table.Th ta="center">Pares Totales</Table.Th>
-                           <Table.Th ta="center">Cantidad a Exportar</Table.Th>
-                        </Table.Tr>
-                     </Table.Thead>
-                     <Table.Tbody>
-                        {circuitos.map(circuito => (
-                           <Table.Tr key={circuito.id}>
-                              <Table.Td>
-                                 <Checkbox
-                                    checked={selectedCircuits.includes(circuito.id)}
-                                    onChange={() => toggleCircuito(circuito.id)}
-                                 />
-                              </Table.Td>
-                              <Table.Td><Text size="sm" fw={500}>{circuito.nombre}</Text></Table.Td>
-                              <Table.Td ta="center"><Text size="sm">{circuito.totalPares}</Text></Table.Td>
-                              <Table.Td ta="center">
-                                 <NumberInput
-                                    value={exportQuantities[circuito.id] || 0}
-                                    onChange={(val) => setExportQuantities(p => ({ ...p, [circuito.id]: Number(val) }))}
-                                    min={1}
-                                    max={circuito.totalPares}
-                                    disabled={!selectedCircuits.includes(circuito.id)}
-                                    w={90}
-                                    mx="auto"
-                                    hideControls={false}
-                                 />
-                              </Table.Td>
-                           </Table.Tr>
-                        ))}
-                        {circuitos.length === 0 && (
+                  <ScrollArea>
+                     <Table verticalSpacing="sm" striped>
+                        <Table.Thead>
                            <Table.Tr>
-                              <Table.Td colSpan={4} ta="center"><Text c="dimmed">No hay circuitos disponibles</Text></Table.Td>
+                              <Table.Th w={40}>
+                                 <Checkbox
+                                    checked={allSelected}
+                                    indeterminate={someSelected}
+                                    onChange={(e) => handleSelectAll(e.currentTarget.checked)}
+                                 />
+                              </Table.Th>
+                              <Table.Th>Nombre del Circuito</Table.Th>
+                              <Table.Th ta="center">Pares Totales</Table.Th>
+                              <Table.Th ta="center">Cantidad a Exportar</Table.Th>
                            </Table.Tr>
-                        )}
-                     </Table.Tbody>
-                  </Table>
+                        </Table.Thead>
+                        <Table.Tbody>
+                           {circuitos.map(circuito => (
+                              <Table.Tr key={circuito.id}>
+                                 <Table.Td>
+                                    <Checkbox
+                                       checked={selectedCircuits.includes(circuito.id)}
+                                       onChange={() => toggleCircuito(circuito.id)}
+                                    />
+                                 </Table.Td>
+                                 <Table.Td><Text size="sm" fw={500}>{circuito.nombre}</Text></Table.Td>
+                                 <Table.Td ta="center"><Text size="sm">{circuito.totalPares}</Text></Table.Td>
+                                 <Table.Td ta="center">
+                                    <NumberInput
+                                       value={exportQuantities[circuito.id] || 0}
+                                       onChange={(val) => setExportQuantities(p => ({ ...p, [circuito.id]: Number(val) }))}
+                                       min={1}
+                                       max={circuito.totalPares}
+                                       disabled={!selectedCircuits.includes(circuito.id)}
+                                       w={90}
+                                       mx="auto"
+                                       hideControls={false}
+                                    />
+                                 </Table.Td>
+                              </Table.Tr>
+                           ))}
+                           {circuitos.length === 0 && (
+                              <Table.Tr>
+                                 <Table.Td colSpan={4} ta="center"><Text c="dimmed">No hay circuitos disponibles</Text></Table.Td>
+                              </Table.Tr>
+                           )}
+                        </Table.Tbody>
+                     </Table>
+                  </ScrollArea>
                </Paper>
             </Grid.Col>
 
             <Grid.Col span={{ base: 12, md: 4 }}>
-               <Paper withBorder p="xl" radius="md" shadow="sm" pos="sticky" top={80}>
+               <Paper withBorder p="xl" radius="md" shadow="sm" pos={isMobile ? "static" : "sticky"} top={80}>
                   {activeTab === 'pdf' ? (
                      <>
                         <Text fw={700} mb="lg" c="dark.8">CONFIGURACIÓN DE PÁGINA</Text>
@@ -183,6 +202,7 @@ export default function ExportacionPage() {
                         >
                            <Group mt="xs" align="flex-start" style={{ flexDirection: 'column' }}>
                               <Radio value="1" label="1 (uno) par por hoja" />
+                              <Radio value="2" label="2 (dos) pares por hoja" />
                               <Radio value="3" label="3 (tres) pares por hoja" />
                            </Group>
                         </Radio.Group>

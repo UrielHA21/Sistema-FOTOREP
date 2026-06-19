@@ -7,6 +7,9 @@ import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../../core/firebase';
 import EmptyState from '../../shared/ui/EmptyState';
 import { useCircuitos } from './hooks/useCircuitos';
+import { useAccessibilityStore } from '../accessibility/store';
+import { useMediaQuery } from '@mantine/hooks';
+import { Tooltip } from '@mantine/core';
 
 export default function CircuitosPage() {
   const { id } = useParams();
@@ -15,6 +18,10 @@ export default function CircuitosPage() {
   const [loading, setLoading] = useState(true);
   
   const { circuitos, loading: circuitosLoading, agregarCircuito, eliminarCircuito } = useCircuitos(id);
+
+  const { simpleMode } = useAccessibilityStore();
+  const isMobile = useMediaQuery('(max-width: 48em)');
+  const showText = !isMobile && !simpleMode;
 
   // Estados del Modal
   const [modalOpened, setModalOpened] = useState(false);
@@ -82,8 +89,14 @@ export default function CircuitosPage() {
   }
 
   const actionButton = (
-    <Button leftSection={<IconPlus size={16} />} color="blue" onClick={() => setModalOpened(true)}>
-      Agregar Circuito
+    <Button 
+      leftSection={<IconPlus size={16} />} 
+      color="blue" 
+      onClick={() => setModalOpened(true)}
+      title={!showText ? "Agregar Circuito" : undefined}
+      aria-label="Agregar Circuito"
+    >
+      {showText && "Agregar Circuito"}
     </Button>
   );
 
@@ -154,28 +167,69 @@ export default function CircuitosPage() {
                  <Table.Td>{c.totalPares || 0}</Table.Td>
                  <Table.Td>
                    <Group gap="sm" wrap="nowrap">
-                     <Button size="xs" variant="light" onClick={() => navigate(`/reportes/${id}/circuitos/${c.id}/pares`)}>Abrir Editor</Button>
-                     <ActionIcon variant="light" color="green" size="md" title="Carga Masiva" onClick={() => navigate(`/reportes/${id}/circuitos/${c.id}/carga-masiva`)}>
-                        <IconPhotoPlus size={16} />
-                     </ActionIcon>
-                     <ActionIcon variant="subtle" color="blue" size="md" title="Editar Información" onClick={() => {
-                        setEditingCircuito(c);
-                        setEditName(c.nombre);
-                        setEditEstado(c.estado || 'pendiente');
-                     }}>
-                        <IconEdit size={16} />
-                     </ActionIcon>
-                     <ActionIcon variant="subtle" color="red" size="md" title="Eliminar Circuito" onClick={() => {
-                        modals.openConfirmModal({
-                           title: "Confirmar eliminación",
-                           children: <Text size="sm">¿Estás seguro? Esta acción ocultará el elemento y todas las evidencias fotográficas asociadas. No se podrá deshacer desde esta pantalla.</Text>,
-                           labels: { confirm: "Eliminar", cancel: "Cancelar" },
-                           confirmProps: { color: 'red' },
-                           onConfirm: () => eliminarCircuito(c.id)
-                        });
-                     }}>
-                        <IconTrash size={16} />
-                     </ActionIcon>
+                     {showText ? (
+                       <>
+                         <Button size="xs" variant="light" color="blue" leftSection={<IconEdit size={14} />} onClick={() => navigate(`/reportes/${id}/circuitos/${c.id}/pares`)}>
+                           Editor
+                         </Button>
+                         <Button size="xs" variant="light" color="green" leftSection={<IconPhotoPlus size={14} />} onClick={() => navigate(`/reportes/${id}/circuitos/${c.id}/carga-masiva`)}>
+                           Fotos Masiva
+                         </Button>
+                         <Button size="xs" variant="subtle" color="blue" leftSection={<IconEdit size={14} />} onClick={() => {
+                            setEditingCircuito(c);
+                            setEditName(c.nombre);
+                            setEditEstado(c.estado || 'pendiente');
+                         }}>
+                           Modificar
+                         </Button>
+                         <Button size="xs" variant="subtle" color="red" leftSection={<IconTrash size={14} />} onClick={() => {
+                            modals.openConfirmModal({
+                               title: "Confirmar eliminación",
+                               children: <Text size="sm">¿Estás seguro? Esta acción ocultará el elemento y todas las evidencias fotográficas asociadas. No se podrá deshacer desde esta pantalla.</Text>,
+                               labels: { confirm: "Eliminar", cancel: "Cancelar" },
+                               confirmProps: { color: 'red' },
+                               onConfirm: () => eliminarCircuito(c.id)
+                            });
+                         }}>
+                           Eliminar
+                         </Button>
+                       </>
+                     ) : (
+                       <>
+                         <Tooltip label="Editor">
+                           <ActionIcon variant="light" color="blue" size="md" onClick={() => navigate(`/reportes/${id}/circuitos/${c.id}/pares`)}>
+                             <IconEdit size={16} />
+                           </ActionIcon>
+                         </Tooltip>
+                         <Tooltip label="Carga Masiva">
+                           <ActionIcon variant="light" color="green" size="md" onClick={() => navigate(`/reportes/${id}/circuitos/${c.id}/carga-masiva`)}>
+                              <IconPhotoPlus size={16} />
+                           </ActionIcon>
+                         </Tooltip>
+                         <Tooltip label="Modificar Información">
+                           <ActionIcon variant="subtle" color="blue" size="md" onClick={() => {
+                              setEditingCircuito(c);
+                              setEditName(c.nombre);
+                              setEditEstado(c.estado || 'pendiente');
+                           }}>
+                              <IconEdit size={16} />
+                           </ActionIcon>
+                         </Tooltip>
+                         <Tooltip label="Eliminar Circuito">
+                           <ActionIcon variant="subtle" color="red" size="md" onClick={() => {
+                              modals.openConfirmModal({
+                                 title: "Confirmar eliminación",
+                                 children: <Text size="sm">¿Estás seguro? Esta acción ocultará el elemento y todas las evidencias fotográficas asociadas. No se podrá deshacer desde esta pantalla.</Text>,
+                                 labels: { confirm: "Eliminar", cancel: "Cancelar" },
+                                 confirmProps: { color: 'red' },
+                                 onConfirm: () => eliminarCircuito(c.id)
+                              });
+                           }}>
+                              <IconTrash size={16} />
+                           </ActionIcon>
+                         </Tooltip>
+                       </>
+                     )}
                    </Group>
                  </Table.Td>
                </Table.Tr>

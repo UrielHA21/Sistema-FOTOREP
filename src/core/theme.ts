@@ -10,6 +10,18 @@ export const theme = createTheme({
             defaultProps: {
                 fw: 500,
             },
+            styles: {
+                root: {
+                    border: '1.5px solid currentColor',
+                }
+            }
+        },
+        ActionIcon: {
+            styles: {
+                root: {
+                    border: '1.5px solid currentColor',
+                }
+            }
         },
         Card: {
             defaultProps: {

@@ -7,6 +7,9 @@ import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../../core/firebase';
 import { useParesFotograficos } from './hooks/useParesFotograficos';
 import PairCard from './components/PairCard';
+import { useAccessibilityStore } from '../accessibility/store';
+import { useMediaQuery } from '@mantine/hooks';
+import { Tooltip } from '@mantine/core';
 
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import type { DragEndEvent } from '@dnd-kit/core';
@@ -20,6 +23,9 @@ export default function EditorParesPage() {
   const [isCreating, setIsCreating] = useState(false);
 
   const [zoomLevel, setZoomLevel] = useState(1);
+  const { simpleMode } = useAccessibilityStore();
+  const isMobile = useMediaQuery('(max-width: 48em)');
+  const showText = !isMobile && !simpleMode;
 
   const { pares, loadingList, isZipping, crearParVacio, actualizarMitadPar, eliminarPar, intercambiarFotos, reordenarPares, descargarZip } = useParesFotograficos(reporteId, circuitoId);
 
@@ -95,13 +101,13 @@ export default function EditorParesPage() {
           Volver a Circuitos
         </Button>
 
-        <Group justify="space-between" align="center">
+        <Group justify="space-between" align="center" style={{ flexWrap: 'wrap', gap: 16 }}>
           <Group gap="xl" align="center">
              <Group align="center" gap="sm">
               <IconPlug size={28} color="var(--mantine-color-blue-6)" />
-              <Title order={2}>{circuito?.nombre || 'Circuito FLM-XXX'}</Title>
+              <Title order={2} size={isMobile ? "h3" : "h2"}>{circuito?.nombre || 'Circuito FLM-XXX'}</Title>
             </Group>
-            <Group gap="xl" align="center">
+            <Group gap="xl" align="center" display={{ base: 'none', sm: 'flex' }}>
               <Badge color="gray" variant="light" size="lg">Pares: {pares.length}</Badge>
               <Box w={150}>
                  <Text size="xs" c="dimmed" mb={5}>ZOOM FOTOGRÁFICO</Text>
@@ -110,16 +116,42 @@ export default function EditorParesPage() {
             </Group>
           </Group>
 
-          <Group>
-            <Button variant="default" leftSection={<IconDownload size={16} />} onClick={() => descargarZip(circuito?.nombre)} loading={isZipping} disabled={pares.length === 0}>
-              Descargar ZIP
-            </Button>
-            <Button color="green" leftSection={<IconPlus size={16} />} onClick={() => navigate(`/reportes/${reporteId}/circuitos/${circuitoId}/carga-masiva`)}>
-              Agregar Fotos Masivo
-            </Button>
-            <Button variant="light" onClick={handleCrearPar} loading={isCreating}>
-              Agregar Par
-            </Button>
+          <Group w={{ base: '100%', sm: 'auto' }} justify="flex-end">
+            <Tooltip label="Descargar ZIP" disabled={showText}>
+              <Button 
+                variant="default" 
+                leftSection={<IconDownload size={16} />} 
+                onClick={() => descargarZip(circuito?.nombre)} 
+                loading={isZipping} 
+                disabled={pares.length === 0}
+                px={showText ? undefined : 'xs'}
+              >
+                {showText && "Descargar ZIP"}
+              </Button>
+            </Tooltip>
+            
+            <Tooltip label="Agregar Fotos Masivo" disabled={showText}>
+              <Button 
+                color="green" 
+                leftSection={<IconPlus size={16} />} 
+                onClick={() => navigate(`/reportes/${reporteId}/circuitos/${circuitoId}/carga-masiva`)}
+                px={showText ? undefined : 'xs'}
+              >
+                {showText && "Agregar Fotos Masivo"}
+              </Button>
+            </Tooltip>
+            
+            <Tooltip label="Agregar Par" disabled={showText}>
+              <Button 
+                variant="light" 
+                leftSection={<IconPlus size={16} />}
+                onClick={handleCrearPar} 
+                loading={isCreating}
+                px={showText ? undefined : 'xs'}
+              >
+                {showText && "Agregar Par"}
+              </Button>
+            </Tooltip>
           </Group>
         </Group>
       </Box>

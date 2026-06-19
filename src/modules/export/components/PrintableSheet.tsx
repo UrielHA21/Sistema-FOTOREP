@@ -14,6 +14,7 @@ interface PrintableSheetProps {
   /** Estilos adicionales para el modo Ancho de Página (aspect-ratio, maxWidth, etc.) */
   anchoStyle?: React.CSSProperties;
   paresChunk: ParFotograficoPlano[];
+  layoutMode?: number;
 }
 
 // ---- Slot de imagen reutilizable (Etiqueta ARRIBA) ----
@@ -83,8 +84,10 @@ export default function PrintableSheet({
   revisaNombre,
   anchoStyle,
   paresChunk,
+  layoutMode = 3,
 }: PrintableSheetProps) {
   const isSingleMode = paresChunk.length === 1;
+  const gridImgHeight = layoutMode === 2 ? 235 : 190;
 
   // Nombre del circuito(s) para la cabecera (únicos en el chunk)
   const circuitosEnChunk = [...new Set(paresChunk.map(p => p.circuitoNombre || ''))].join(' / ');
@@ -194,10 +197,10 @@ export default function PrintableSheet({
                 <ImageSlot url={item.urlDespues} label="DESPUÉS" height={280} />
               </Box>
             ) : (
-              /* MODO 3 PARES: GRID HORIZONTAL (2 COLUMNAS) */
+              /* MODO MULTI PAR: GRID HORIZONTAL (2 COLUMNAS) */
               <SimpleGrid cols={2} spacing={40}>
-                <ImageSlot url={item.urlAntes} label="ANTES" height={190} />
-                <ImageSlot url={item.urlDespues} label="DESPUÉS" height={190} />
+                <ImageSlot url={item.urlAntes} label="ANTES" height={gridImgHeight} />
+                <ImageSlot url={item.urlDespues} label="DESPUÉS" height={gridImgHeight} />
               </SimpleGrid>
             )}
           </Box>

@@ -49,8 +49,8 @@ interface Payload {
   reporteMeta: ReporteMeta;
   firmas: { realiza: Firma; revisa: Firma };
   logoBase64: string; // PNG base64 string
-  paginas: ParFotografico[][]; // Array de páginas (1 o 3 pares por página dependiente del diseño)
-  disenoHoja: number; // 1 | 3
+  paginas: ParFotografico[][]; // Array de páginas (1, 2 o 3 pares por página dependiente del diseño)
+  disenoHoja: number; // 1 | 2 | 3
 }
 
 // ─── Helper: download image and return ArrayBuffer ───────────────────────────
@@ -476,6 +476,65 @@ async function drawLayout1(
   await drawCoverImage(page, pdfDoc, font, par.urlDespues, startX, despuesImgY, imgAreaW, imgAreaH);
 }
 
+async function drawLayout2(
+  page: ReturnType<PDFDocument["addPage"]>,
+  pdfDoc: PDFDocument,
+  font: Awaited<ReturnType<PDFDocument["embedFont"]>>,
+  fontBold: Awaited<ReturnType<PDFDocument["embedFont"]>>,
+  pares: ParFotografico[]
+) {
+  const numPares = Math.min(pares.length, 2);
+  const rowH = PHOTO_AREA_H / 2;
+
+  for (let i = 0; i < numPares; i++) {
+    const par = pares[i];
+    const rowTopY = PHOTO_AREA_TOP - rowH * i;
+    const rowBottomY = rowTopY - rowH;
+
+    const paddingY = 16;
+    const labelH = 12;
+    const imgAreaH = rowH - labelH - paddingY * 2;
+
+    // 2 images side by side
+    const gap = 30;
+    const paddingX = 30;
+    const singleImgW = (CONTENT_W - paddingX * 2 - gap) / 2;
+
+    const startX = MARGIN_X + paddingX;
+
+    const imgY = rowBottomY + paddingY;
+    const labelTopY = imgY + imgAreaH + 4;
+
+    // ANTES label (Left aligned over image)
+    page.drawText("ANTES:", {
+      x: startX,
+      y: labelTopY,
+      size: 8,
+      font: fontBold,
+      color: rgb(0, 0, 0),
+    });
+
+    // ANTES img
+    await drawCoverImage(page, pdfDoc, font, par.urlAntes, startX, imgY, singleImgW, imgAreaH);
+
+    const despuesX = startX + singleImgW + gap;
+
+    // DESPUÉS label (Right aligned over image)
+    const despuesLabel = "DESPUÉS:";
+    const despuesTw = fontBold.widthOfTextAtSize(despuesLabel, 8);
+    page.drawText(despuesLabel, {
+      x: despuesX + singleImgW - despuesTw,
+      y: labelTopY,
+      size: 8,
+      font: fontBold,
+      color: rgb(0, 0, 0),
+    });
+
+    // DESPUÉS img
+    await drawCoverImage(page, pdfDoc, font, par.urlDespues, despuesX, imgY, singleImgW, imgAreaH);
+  }
+}
+
 async function drawLayout3(
   page: ReturnType<PDFDocument["addPage"]>,
   pdfDoc: PDFDocument,
@@ -571,7 +630,7 @@ export const generarReportePDF = onCall(
         }
       }
 
-      const isLayout1 = data.disenoHoja === 1;
+      const diseno = data.disenoHoja || 3;
 
       // ── Iterate pages ──
       for (const paginaPares of data.paginas) {
@@ -585,8 +644,10 @@ export const generarReportePDF = onCall(
         await drawHeader(page, font, fontBold, data.reporteMeta, logoImage, circuitoDeHoja);
 
         // Draw photo pairs based on layout
-        if (isLayout1) {
+        if (diseno === 1) {
           await drawLayout1(page, pdfDoc, font, fontBold, paginaPares[0]);
+        } else if (diseno === 2) {
+          await drawLayout2(page, pdfDoc, font, fontBold, paginaPares);
         } else {
           await drawLayout3(page, pdfDoc, font, fontBold, paginaPares);
         }

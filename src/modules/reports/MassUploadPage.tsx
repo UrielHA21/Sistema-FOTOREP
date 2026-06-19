@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useBlocker } from 'react-router-dom';
 import { Container, Title, Box, Group, Button, Center, Loader, SimpleGrid, Paper, Text, ActionIcon, Image, Affix, Card, Alert, SegmentedControl } from '@mantine/core';
 import { Dropzone, IMAGE_MIME_TYPE, type FileWithPath } from '@mantine/dropzone';
 import { IconChevronLeft, IconHistory, IconCheck, IconTrash, IconPlayerPlay, IconInfoCircle, IconArrowUp, IconX } from '@tabler/icons-react';
 import { useParesFotograficos } from './hooks/useParesFotograficos';
+import { useAccessibilityStore } from '../accessibility/store';
+import { useMediaQuery } from '@mantine/hooks';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../../core/firebase';
 
@@ -22,7 +24,26 @@ export default function MassUploadPage() {
   const [showAlert, setShowAlert] = useState(true);
   const [compressionLevel, setCompressionLevel] = useState('light');
 
+  const { simpleMode } = useAccessibilityStore();
+  const isMobile = useMediaQuery('(max-width: 48em)');
+  const showText = !isMobile && !simpleMode;
+
   const { subirLoteMasivo } = useParesFotograficos(reporteId, circuitoId);
+
+  // Bloquear navegación SPA dentro de la aplicación
+  useBlocker(() => isProcessing);
+
+  // Bloquear recarga o cierre de pestaña en el navegador
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (isProcessing) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [isProcessing]);
 
   useEffect(() => {
     const fetchCircuito = async () => {
@@ -69,7 +90,7 @@ export default function MassUploadPage() {
   return (
     <Container size="lg" py="xl">
       <Box pos="sticky" top={60} bg="var(--mantine-color-body)" pb="sm" pt="md" style={{ borderBottom: '1px solid var(--mantine-color-default-border)', zIndex: 100 }}>
-        <Button variant="subtle" color="gray" leftSection={<IconChevronLeft size={16} />} onClick={() => navigate(`/reportes/${reporteId}/circuitos/${circuitoId}/pares`)} mb="xs" px={0}>
+        <Button variant="subtle" color="gray" leftSection={<IconChevronLeft size={16} />} onClick={() => navigate(`/reportes/${reporteId}/circuitos/${circuitoId}/pares`)} mb="xs" px={0} disabled={isProcessing}>
           Volver al Editor de Pares
         </Button>
         <Group justify="space-between" align="flex-start" mb="sm">
@@ -89,10 +110,13 @@ export default function MassUploadPage() {
               </Box>
            </Box>
            
-           <Group mt="md">
+           <Group mt="md" gap="xs">
+             {isProcessing && progressText && (
+               <Text size="xs" c="green" fw={600} mr="xs">{progressText}</Text>
+             )}
              <Text c="dimmed" size="sm" display={{ base: 'none', sm: 'block' }}>Listos: <b>{total}</b> pares</Text>
-             <Button color="green" size="sm" leftSection={<IconPlayerPlay size={16} />} loading={isProcessing} disabled={total === 0} onClick={handleProcessMass}>
-               {isProcessing ? (progressText || 'Procesando Motor CFE...') : 'Aprobar Carga'}
+             <Button color="green" size="sm" leftSection={<IconPlayerPlay size={16} />} loading={isProcessing} disabled={total === 0} onClick={handleProcessMass} px={showText ? undefined : 'xs'} miw={showText ? 140 : 50}>
+               {showText ? 'Aprobar Carga' : null}
              </Button>
            </Group>
         </Group>
@@ -121,10 +145,11 @@ export default function MassUploadPage() {
                     </Group>
                   </Dropzone.Reject>
                   <Dropzone.Idle>
-                    <Group gap="xs">
+                    <Group gap="xs" justify="center">
                       <IconHistory size={20} color="var(--mantine-color-blue-6)" />
                       <Box>
                           <Text fw={600} size="sm">Múltiples: ANTES</Text>
+                          <Text size="xs" c="dimmed">Toca o arrastra aquí</Text>
                       </Box>
                     </Group>
                   </Dropzone.Idle>
@@ -155,10 +180,11 @@ export default function MassUploadPage() {
                     </Group>
                   </Dropzone.Reject>
                   <Dropzone.Idle>
-                    <Group gap="xs">
+                    <Group gap="xs" justify="center">
                       <IconCheck size={20} color="var(--mantine-color-green-6)" />
                       <Box>
                           <Text fw={600} size="sm">Múltiples: DESPUÉS</Text>
+                          <Text size="xs" c="dimmed">Toca o arrastra aquí</Text>
                       </Box>
                     </Group>
                   </Dropzone.Idle>

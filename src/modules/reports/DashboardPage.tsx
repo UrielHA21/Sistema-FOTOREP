@@ -6,10 +6,15 @@ import { useNavigate } from 'react-router-dom';
 import { useReportsList, type Reporte } from './hooks/useReportsList';
 import ReportCard from './components/ReportCard';
 import ReportEditModal from './components/ReportEditModal';
+import { useAccessibilityStore } from '../accessibility/store';
+import { useMediaQuery } from '@mantine/hooks';
 
 export default function DashboardPage() {
   const navigate = useNavigate();
   const { reportes, loading, error, eliminarReporte } = useReportsList();
+  const { simpleMode } = useAccessibilityStore();
+  const isMobile = useMediaQuery('(max-width: 48em)');
+  const showText = !isMobile && !simpleMode;
 
   const [editingReporte, setEditingReporte] = useState<Reporte | null>(null);
 
@@ -23,15 +28,20 @@ export default function DashboardPage() {
         variant="light"
         color="gray"
         onClick={() => navigate('/historial-pdf')}
+        leftSection={<IconAlertCircle size={16} />}
+        title={!showText ? "Historial de PDFs" : undefined}
+        aria-label="Historial de PDFs"
       >
-        Historial de PDFs
+        {showText && "Historial de PDFs"}
       </Button>
       <Button
         leftSection={<IconPlus size={16} />}
         color="blue"
         onClick={handleNewReport}
+        title={!showText ? "Nuevo Reporte" : undefined}
+        aria-label="Nuevo Reporte"
       >
-        Nuevo Reporte
+        {showText && "Nuevo Reporte"}
       </Button>
     </Group>
   );
