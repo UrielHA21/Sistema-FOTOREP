@@ -102,6 +102,7 @@ export default function AccessibilityWidget() {
             onMouseLeave={() => setIsHovered(false)}
             onClick={handleClick}
             aria-label="Menú de Accesibilidad"
+            title="Menú de Accesibilidad"
           >
             <IconAccessible style={{ width: rem(24), height: rem(24) }} stroke={1.5} />
           </ActionIcon>

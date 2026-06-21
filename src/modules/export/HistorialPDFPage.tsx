@@ -120,7 +120,7 @@ export default function HistorialPDFPage() {
   return (
     <Box>
       <Flex align="center" gap="md" mb="xl">
-        <ActionIcon variant="light" onClick={() => navigate('/')} size="lg">
+        <ActionIcon variant="light" onClick={() => navigate('/')} size="lg" aria-label="Volver al inicio" title="Volver al inicio">
           <IconArrowLeft size={20} />
         </ActionIcon>
         <Title order={2}>Historial de PDFs Generados</Title>
@@ -185,6 +185,7 @@ export default function HistorialPDFPage() {
                         color="red" 
                         onClick={() => handleDelete(exp)}
                         aria-label="Eliminar"
+                        title="Eliminar de historial"
                       >
                         <IconTrash size={16} />
                       </ActionIcon>

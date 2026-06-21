@@ -19,6 +19,7 @@ if (!admin.apps.length) {
 }
 
 // ─── Global options (applies to all v2 functions) ────────────────────────────
+// Despliegue forzado: 2026-06-19 HH:MM
 setGlobalOptions({ maxInstances: 10 });
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -114,8 +115,8 @@ const PAGE_W = PageSizes.Letter[0]; // 612
 const PAGE_H = PageSizes.Letter[1]; // 792
 // Use standard 1-inch (72pt) margins approximately or whatever looks best.
 const MARGIN_X = 36;
-const MARGIN_TOP = 30;
-const MARGIN_BOTTOM = 25; // Reducido para mover el footer hacia abajo
+const MARGIN_TOP = 20;
+const MARGIN_BOTTOM = 20;
 const CONTENT_W = PAGE_W - MARGIN_X * 2;
 
 // Header dimensions
@@ -123,7 +124,7 @@ const HEADER_H = 78;
 const HEADER_Y_TOP = PAGE_H - MARGIN_TOP;
 
 // Footer dimensions
-const FOOTER_H = 100; // Aumentado para dar más espacio a la firma manuscrita
+const FOOTER_H = 95;
 const FOOTER_Y_BOTTOM = MARGIN_BOTTOM;
 
 // Photo area (between header and footer)
@@ -382,7 +383,7 @@ function drawFooter(
     });
 
     // Signature line: Su inicio/final definen el ancho de las líneas principales del PDF
-    const sigLineY = FOOTER_Y_BOTTOM + 55;
+    const sigLineY = FOOTER_Y_BOTTOM + 50;
     page.drawLine({
       start: { x: cx - sigLineW / 2, y: sigLineY },
       end: { x: cx + sigLineW / 2, y: sigLineY },
@@ -484,53 +485,55 @@ async function drawLayout2(
   pares: ParFotografico[]
 ) {
   const numPares = Math.min(pares.length, 2);
-  const rowH = PHOTO_AREA_H / 2;
+  
+  const imgAreaH = 238.5; // Tamaño mayor, equivalente a 319px
+  const labelH = 12;
+  const labelMargin = 6;
+  const rowH = labelH + labelMargin + imgAreaH;
+  const gapY = 30; // Espacio vertical entre filas (equivalente a 40px)
+  
+  const totalBlockH = numPares * rowH + (numPares > 1 ? (numPares - 1) * gapY : 0);
+  const startY = PHOTO_AREA_TOP - 18; // Inicio fijo de flex-start (padding top 24px = 18pt)
+
+  const gapX = 35;
+  const paddingX = 35;
+  const singleImgW = (CONTENT_W - paddingX * 2 - gapX) / 2;
+  const startX = MARGIN_X + paddingX;
+
+  console.log(`[DEBUG_PDF_LAYOUT2] Executing. numPares=${numPares}, totalBlockH=${totalBlockH}, startY=${startY}, imgAreaH=${imgAreaH}`);
 
   for (let i = 0; i < numPares; i++) {
     const par = pares[i];
-    const rowTopY = PHOTO_AREA_TOP - rowH * i;
-    const rowBottomY = rowTopY - rowH;
+    const rowTopY = startY - (rowH + gapY) * i;
+    const labelY = rowTopY - labelH;
+    const imgY = labelY - labelMargin - imgAreaH;
 
-    const paddingY = 16;
-    const labelH = 12;
-    const imgAreaH = rowH - labelH - paddingY * 2;
-
-    // 2 images side by side
-    const gap = 30;
-    const paddingX = 30;
-    const singleImgW = (CONTENT_W - paddingX * 2 - gap) / 2;
-
-    const startX = MARGIN_X + paddingX;
-
-    const imgY = rowBottomY + paddingY;
-    const labelTopY = imgY + imgAreaH + 4;
-
-    // ANTES label (Left aligned over image)
-    page.drawText("ANTES:", {
-      x: startX,
-      y: labelTopY,
-      size: 8,
+    // ANTES label (Centered)
+    const antesLabel = "ANTES:";
+    const twA = fontBold.widthOfTextAtSize(antesLabel, 9);
+    page.drawText(antesLabel, {
+      x: startX + singleImgW / 2 - twA / 2,
+      y: labelY,
+      size: 9,
       font: fontBold,
       color: rgb(0, 0, 0),
     });
 
-    // ANTES img
     await drawCoverImage(page, pdfDoc, font, par.urlAntes, startX, imgY, singleImgW, imgAreaH);
 
-    const despuesX = startX + singleImgW + gap;
+    const despuesX = startX + singleImgW + gapX;
 
-    // DESPUÉS label (Right aligned over image)
+    // DESPUÉS label (Centered)
     const despuesLabel = "DESPUÉS:";
-    const despuesTw = fontBold.widthOfTextAtSize(despuesLabel, 8);
+    const despuesTw = fontBold.widthOfTextAtSize(despuesLabel, 9);
     page.drawText(despuesLabel, {
-      x: despuesX + singleImgW - despuesTw,
-      y: labelTopY,
-      size: 8,
+      x: despuesX + singleImgW / 2 - despuesTw / 2,
+      y: labelY,
+      size: 9,
       font: fontBold,
       color: rgb(0, 0, 0),
     });
 
-    // DESPUÉS img
     await drawCoverImage(page, pdfDoc, font, par.urlDespues, despuesX, imgY, singleImgW, imgAreaH);
   }
 }
@@ -543,55 +546,55 @@ async function drawLayout3(
   pares: ParFotografico[]
 ) {
   const numPares = Math.min(pares.length, 3);
-  const rowH = PHOTO_AREA_H / 3;
+  
+  const imgAreaH = 146.3; // Equivalente a 195px
+  const labelH = 12;
+  const labelMargin = 6;
+  const rowH = labelH + labelMargin + imgAreaH;
+  const gapY = 25; // Espacio vertical entre filas (equivalente a 33px)
+  
+  const totalBlockH = numPares * rowH + (numPares > 1 ? (numPares - 1) * gapY : 0);
+  const startY = PHOTO_AREA_TOP - 18; // Inicio fijo de flex-start (padding top 24px = 18pt)
+
+  const gapX = 35;
+  const paddingX = 35;
+  const singleImgW = (CONTENT_W - paddingX * 2 - gapX) / 2;
+  const startX = MARGIN_X + paddingX;
+
+  console.log(`[DEBUG_PDF_LAYOUT3] Executing. numPares=${numPares}, totalBlockH=${totalBlockH}, startY=${startY}, imgAreaH=${imgAreaH}`);
 
   for (let i = 0; i < numPares; i++) {
     const par = pares[i];
-    const rowTopY = PHOTO_AREA_TOP - rowH * i;
-    const rowBottomY = rowTopY - rowH;
+    const rowTopY = startY - (rowH + gapY) * i;
+    const labelY = rowTopY - labelH;
+    const imgY = labelY - labelMargin - imgAreaH;
 
-
-
-    const paddingY = 12;
-    const labelH = 12;
-    const imgAreaH = rowH - labelH - paddingY * 2;
-
-    // 2 images side by side
-    const gap = 30;
-    const paddingX = 30;
-    const singleImgW = (CONTENT_W - paddingX * 2 - gap) / 2;
-
-    const startX = MARGIN_X + paddingX;
-
-    const imgY = rowBottomY + paddingY;
-    const labelTopY = imgY + imgAreaH + 4;
-
-    // ANTES label (Left aligned over image)
-    page.drawText("ANTES:", {
-      x: startX,
-      y: labelTopY,
-      size: 8,
+    // ANTES label (Centered)
+    const antesLabel = "ANTES:";
+    const twA = fontBold.widthOfTextAtSize(antesLabel, 9);
+    page.drawText(antesLabel, {
+      x: startX + singleImgW / 2 - twA / 2,
+      y: labelY,
+      size: 9,
       font: fontBold,
       color: rgb(0, 0, 0),
     });
 
-    // ANTES img
     await drawCoverImage(page, pdfDoc, font, par.urlAntes, startX, imgY, singleImgW, imgAreaH);
 
-    const despuesX = startX + singleImgW + gap;
+    const despuesX = startX + singleImgW + gapX;
 
-    // DESPUÉS label (Right aligned over image)
+    // DESPUÉS label (Centered)
     const despuesLabel = "DESPUÉS:";
-    const despuesTw = fontBold.widthOfTextAtSize(despuesLabel, 8);
+    const despuesTw = fontBold.widthOfTextAtSize(despuesLabel, 9);
     page.drawText(despuesLabel, {
-      x: despuesX + singleImgW - despuesTw,
-      y: labelTopY,
-      size: 8,
+      x: despuesX + singleImgW / 2 - despuesTw / 2,
+      y: labelY,
+      size: 9,
       font: fontBold,
       color: rgb(0, 0, 0),
     });
 
-    // DESPUÉS img
     await drawCoverImage(page, pdfDoc, font, par.urlDespues, despuesX, imgY, singleImgW, imgAreaH);
   }
 }
@@ -630,7 +633,7 @@ export const generarReportePDF = onCall(
         }
       }
 
-      const diseno = data.disenoHoja || 3;
+
 
       // ── Iterate pages ──
       for (const paginaPares of data.paginas) {
@@ -644,9 +647,11 @@ export const generarReportePDF = onCall(
         await drawHeader(page, font, fontBold, data.reporteMeta, logoImage, circuitoDeHoja);
 
         // Draw photo pairs based on layout
-        if (diseno === 1) {
+        const paresEnEstaHoja = paginaPares.length;
+
+        if (paresEnEstaHoja === 1) {
           await drawLayout1(page, pdfDoc, font, fontBold, paginaPares[0]);
-        } else if (diseno === 2) {
+        } else if (paresEnEstaHoja === 2) {
           await drawLayout2(page, pdfDoc, font, fontBold, paginaPares);
         } else {
           await drawLayout3(page, pdfDoc, font, fontBold, paginaPares);
@@ -684,8 +689,10 @@ export const generarReportePDF = onCall(
       const sanitize = (s: string) => s.replace(/[<>:"/\\|?*]/g, '').replace(/\s+/g, ' ').trim();
       const areaNombre = sanitize(data.reporteMeta.area || 'AREA');
       const tipoFormato = sanitize(data.reporteMeta.tipoFormato || 'N');
-      const nombreArchivo = `FORMATO DE FOTOS ${areaNombre} TIPO ${tipoFormato}.pdf`;
 
+      // AGREGAMOS ESTAS DOS LÍNEAS PARA ROMPER LA CACHÉ
+      const timeStampBuster = new Date().toISOString().replace(/[:.]/g, '-');
+      const nombreArchivo = `FORMATO DE FOTOS ${areaNombre} TIPO ${tipoFormato} - ${timeStampBuster}.pdf`;
       const bucket = admin.storage().bucket();
       const storagePath = `reportes_exportados/${Date.now()}_${nombreArchivo}`;
       const file = bucket.file(storagePath);
@@ -744,7 +751,7 @@ export const eliminarExportacion = onCall(async (request) => {
   }
 
   const data = docSnap.data();
-  
+
   // 2. Control de Acceso RBAC: Dueño o Admin
   // Asumimos que los roles vienen en los custom claims (ej. request.auth.token.role === 'admin')
   // O podemos validar el creador.

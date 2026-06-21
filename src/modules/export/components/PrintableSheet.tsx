@@ -11,7 +11,6 @@ interface PrintableSheetProps {
   realizaCargo?: string;
   revisaNombre?: string;
   revisaCargo?: string;
-  /** Estilos adicionales para el modo Ancho de Página (aspect-ratio, maxWidth, etc.) */
   anchoStyle?: React.CSSProperties;
   paresChunk: ParFotograficoPlano[];
   layoutMode?: number;
@@ -86,8 +85,7 @@ export default function PrintableSheet({
   paresChunk,
   layoutMode = 3,
 }: PrintableSheetProps) {
-  const isSingleMode = paresChunk.length === 1;
-  const gridImgHeight = layoutMode === 2 ? 235 : 190;
+  const gridImgHeight = layoutMode === 2 ? 319 : 195;
 
   // Nombre del circuito(s) para la cabecera (únicos en el chunk)
   const circuitosEnChunk = [...new Set(paresChunk.map(p => p.circuitoNombre || ''))].join(' / ');
@@ -178,33 +176,37 @@ export default function PrintableSheet({
           flex: 1,
           display: 'flex',
           flexDirection: 'column',
-          justifyContent: isSingleMode ? 'center' : 'flex-start',
+          justifyContent: 'flex-start',
           border: '1.2px solid #000',
           padding: '24px 32px',
           marginBottom: 10,
         }}
       >
-        {paresChunk.map((item) => (
-          <Box
-            key={item.id}
-            mb={isSingleMode ? 0 : 'xl'}
-            style={{ position: 'relative' }}
-          >
-            {isSingleMode ? (
-              /* MODO 1 PAR: APILADO VERTICAL */
-              <Box style={{ width: '82%', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 24 }}>
-                <ImageSlot url={item.urlAntes} label="ANTES" height={280} />
-                <ImageSlot url={item.urlDespues} label="DESPUÉS" height={280} />
-              </Box>
-            ) : (
-              /* MODO MULTI PAR: GRID HORIZONTAL (2 COLUMNAS) */
-              <SimpleGrid cols={2} spacing={40}>
-                <ImageSlot url={item.urlAntes} label="ANTES" height={gridImgHeight} />
-                <ImageSlot url={item.urlDespues} label="DESPUÉS" height={gridImgHeight} />
-              </SimpleGrid>
-            )}
-          </Box>
-        ))}
+        {paresChunk.map((item, index) => {
+          const isLast = index === paresChunk.length - 1;
+          const gapY = layoutMode === 2 ? 40 : (layoutMode === 3 ? 33 : 0);
+          return (
+            <Box
+              key={item.id}
+              mb={isLast ? 0 : gapY}
+              style={{ position: 'relative' }}
+            >
+              {layoutMode === 1 ? (
+                /* MODO 1 PAR: APILADO VERTICAL */
+                <Box style={{ width: '82%', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 24 }}>
+                  <ImageSlot url={item.urlAntes} label="ANTES" height={280} />
+                  <ImageSlot url={item.urlDespues} label="DESPUÉS" height={280} />
+                </Box>
+              ) : (
+                /* MODO MULTI PAR: GRID HORIZONTAL (2 COLUMNAS) */
+                <SimpleGrid cols={2} spacing={40}>
+                  <ImageSlot url={item.urlAntes} label="ANTES" height={gridImgHeight} />
+                  <ImageSlot url={item.urlDespues} label="DESPUÉS" height={gridImgHeight} />
+                </SimpleGrid>
+              )}
+            </Box>
+          );
+        })}
       </Box>
 
       {/* ============ PIE DE PÁGINA / FIRMAS ============ */}

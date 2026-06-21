@@ -1,12 +1,19 @@
 import { useState, useEffect } from 'react';
-import { Modal, Button, Select, TextInput, SimpleGrid, Group, Alert, Text, Box } from '@mantine/core';
+import { Modal, Button, Select, TextInput, SimpleGrid, Group, Alert, Text, Box, List } from '@mantine/core';
+import { notifications } from '@mantine/notifications';
 import { catalogosService } from '../../admin/catalogos.service';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../../../core/firebase';
 import type { Reporte } from '../hooks/useReportsList';
+import { validarCambioEstadoReporte } from '../hooks/useEstadoWorkflow';
 
 const mockTiposFormato = ['A', 'B'];
-const opcionesEstado = ['borrador', 'en revisión', 'completado'];
+
+const opcionesEstado = [
+  { value: 'borrador',    label: 'Borrador' },
+  { value: 'en_revision', label: 'En Revisión' },
+  { value: 'completado',  label: 'Completado' },
+];
 
 interface ReportEditModalProps {
   opened: boolean;
@@ -16,6 +23,8 @@ interface ReportEditModalProps {
 
 export default function ReportEditModal({ opened, onClose, reporte }: ReportEditModalProps) {
   const [isSaving, setIsSaving] = useState(false);
+  const [validationErrors, setValidationErrors] = useState<string[]>([]);
+  const [validationDetails, setValidationDetails] = useState<string[]>([]);
 
   const [formData, setFormData] = useState({
     zonaId: '', areaId: '',
@@ -39,6 +48,8 @@ export default function ReportEditModal({ opened, onClose, reporte }: ReportEdit
              numeroEstimacion: reporte.numeroEstimacion || '',
              estado: reporte.estado || 'borrador'
          });
+         setValidationErrors([]);
+         setValidationDetails([]);
          
          // Fetch Zonas ONLY when modal opens
          setLoadingZonas(true);
@@ -69,6 +80,19 @@ export default function ReportEditModal({ opened, onClose, reporte }: ReportEdit
 
   const handleSave = async () => {
       if (!reporte) return;
+      setValidationErrors([]);
+      setValidationDetails([]);
+
+      // Validar si el cambio de estado es posible
+      if (formData.estado !== (reporte.estado || 'borrador')) {
+        const validation = await validarCambioEstadoReporte(reporte.id, formData.estado);
+        if (!validation.valid) {
+          setValidationErrors([validation.message || 'Estado inválido.']);
+          setValidationDetails(validation.details || []);
+          return; // bloquear guardado
+        }
+      }
+
       setIsSaving(true);
       try {
           const zonaLabel = zonas.find(z => z.value === formData.zonaId)?.label || '';
@@ -85,9 +109,15 @@ export default function ReportEditModal({ opened, onClose, reporte }: ReportEdit
               numeroEstimacion: formData.numeroEstimacion,
               estado: formData.estado
           });
+          notifications.show({
+            title: 'Reporte actualizado',
+            message: 'La información del reporte se guardó correctamente.',
+            color: 'blue',
+          });
           onClose();
       } catch (e) {
           console.error("Error actualizando reporte", e);
+          notifications.show({ title: 'Error', message: 'No se pudo actualizar el reporte.', color: 'red' });
       } finally { setIsSaving(false); }
   };
 
@@ -110,8 +140,27 @@ export default function ReportEditModal({ opened, onClose, reporte }: ReportEdit
         </Box>
         <TextInput label="Número de estimación" value={formData.numeroEstimacion} onChange={(e) => { const val = e.currentTarget.value; setFormData(p => ({...p, numeroEstimacion: val})); }} required />
         <Select label="Tipo de formato" placeholder="Seleccione" data={mockTiposFormato} value={formData.tipoFormato} onChange={(v) => setFormData(p => ({...p, tipoFormato: v || ''}))} required />
-        <Select label="Estado del Reporte" placeholder="Seleccione estado" data={opcionesEstado} value={formData.estado} onChange={(v) => setFormData(p => ({...p, estado: v || 'borrador'}))} required />
+        <Select
+          label="Estado del Reporte"
+          placeholder="Seleccione estado"
+          data={opcionesEstado}
+          value={formData.estado}
+          onChange={(v) => { setFormData(p => ({...p, estado: v || 'borrador'})); setValidationErrors([]); setValidationDetails([]); }}
+          required
+        />
       </SimpleGrid>
+
+      {/* Errores de validación de estado */}
+      {validationErrors.length > 0 && (
+        <Alert color="orange" title="No se puede guardar" mt="md" variant="light" icon={null}>
+          {validationErrors.map((e, i) => <Text key={i} size="sm" fw={500}>{e}</Text>)}
+          {validationDetails.length > 0 && (
+            <List size="sm" mt="xs" withPadding>
+              {validationDetails.map((d, i) => <List.Item key={i}>{d}</List.Item>)}
+            </List>
+          )}
+        </Alert>
+      )}
 
       <Group justify="flex-end" mt="xl">
         <Button variant="default" onClick={onClose} disabled={isSaving}>Cancelar</Button>

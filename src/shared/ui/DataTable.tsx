@@ -65,12 +65,12 @@ export default function DataTable({ columns, data, itemsPerPage = 5, onEdit, onD
                   <Table.Td>
                     <Group gap="xs">
                       {onEdit && (
-                        <ActionIcon color="blue" variant="subtle" onClick={() => onEdit(item)}>
+                        <ActionIcon color="blue" variant="subtle" onClick={() => onEdit(item)} aria-label="Editar" title="Editar registro">
                           <IconEdit size={16} />
                         </ActionIcon>
                       )}
                       {onDelete && (
-                        <ActionIcon color="red" variant="subtle" onClick={() => openDeleteModal(item)}>
+                        <ActionIcon color="red" variant="subtle" onClick={() => openDeleteModal(item)} aria-label="Eliminar" title="Eliminar registro">
                           <IconTrash size={16} />
                         </ActionIcon>
                       )}

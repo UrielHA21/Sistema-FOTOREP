@@ -1,13 +1,50 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useBlocker } from 'react-router-dom';
 import { Container, Title, Box, Group, Button, Center, Loader, SimpleGrid, Paper, Text, ActionIcon, Image, Affix, Card, Alert, SegmentedControl } from '@mantine/core';
 import { Dropzone, IMAGE_MIME_TYPE, type FileWithPath } from '@mantine/dropzone';
-import { IconChevronLeft, IconHistory, IconCheck, IconTrash, IconPlayerPlay, IconInfoCircle, IconArrowUp, IconX } from '@tabler/icons-react';
+import { IconChevronLeft, IconHistory, IconCheck, IconTrash, IconPlayerPlay, IconInfoCircle, IconArrowUp, IconX, IconArrowRight } from '@tabler/icons-react';
 import { useParesFotograficos } from './hooks/useParesFotograficos';
 import { useAccessibilityStore } from '../accessibility/store';
 import { useMediaQuery } from '@mantine/hooks';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../../core/firebase';
+
+interface ImagePreviewProps {
+  file: File;
+  height: number;
+  alt: string;
+}
+
+function ImagePreview({ file, height, alt }: ImagePreviewProps) {
+  const [url, setUrl] = useState<string>('');
+
+  useEffect(() => {
+    const objectUrl = URL.createObjectURL(file);
+    setUrl(objectUrl);
+    return () => {
+      URL.revokeObjectURL(objectUrl);
+    };
+  }, [file]);
+
+  if (!url) {
+    return (
+      <Center h={height} bg="gray.1">
+        <Loader size="xs" />
+      </Center>
+    );
+  }
+
+  return (
+    <Image
+      src={url}
+      height={height}
+      radius="sm"
+      fit="cover"
+      alt={alt}
+      title={alt}
+    />
+  );
+}
 
 export default function MassUploadPage() {
   const { reporteId, circuitoId } = useParams();
@@ -20,9 +57,11 @@ export default function MassUploadPage() {
   const [filesDespues, setFilesDespues] = useState<FileWithPath[]>([]);
 
   const [isProcessing, setIsProcessing] = useState(false);
+  const [uploadComplete, setUploadComplete] = useState(false);
   const [progressText, setProgressText] = useState<string | null>(null);
   const [showAlert, setShowAlert] = useState(true);
   const [compressionLevel, setCompressionLevel] = useState('light');
+  const forceNavTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { simpleMode } = useAccessibilityStore();
   const isMobile = useMediaQuery('(max-width: 48em)');
@@ -68,19 +107,57 @@ export default function MassUploadPage() {
       removeFileDespues(index);
   };
 
-  const handleProcessMass = async () => {
-      setIsProcessing(true);
-      try {
-         await subirLoteMasivo(filesAntes, filesDespues, (current, total) => {
-             setProgressText(`Optimizando y Subiendo ${current} de ${total}...`);
-         }, compressionLevel as any);
-         navigate(`/reportes/${reporteId}/circuitos/${circuitoId}/pares`);
-      } catch(e) {
-         console.error(e);
-         setIsProcessing(false);
-         setProgressText(null);
-      }
+  const editorPath = `/reportes/${reporteId}/circuitos/${circuitoId}/pares`;
+
+  // Navegar al editor — garantizado incluso si el listener de Firestore está saturado
+  const goToEditor = () => {
+    if (forceNavTimerRef.current) clearTimeout(forceNavTimerRef.current);
+    setIsProcessing(false);
+    navigate(editorPath);
   };
+
+  const handleProcessMass = async () => {
+    setIsProcessing(true);
+    setUploadComplete(false);
+    try {
+      await subirLoteMasivo(filesAntes, filesDespues, (current, total) => {
+        setProgressText(`Procesando foto ${current} de ${total}...`);
+      }, compressionLevel as any);
+
+      // Avanzar el estado del circuito automáticamente a 'en_progreso'
+      if (reporteId && circuitoId) {
+        try {
+          await updateDoc(doc(db, 'reportes', reporteId, 'circuitos', circuitoId), {
+            estado: 'en_progreso',
+          });
+        } catch (e) {
+          console.warn('No se pudo actualizar el estado del circuito automáticamente:', e);
+        }
+      }
+
+      // Fotos subidas: marcar como completo y mostrar banner de escape
+      setProgressText('¡Lote completado! Redirigiendo...');
+      setUploadComplete(true);
+
+      // Intentar navegar automáticamente después de 1.5 s para dejar que React se asiente
+      forceNavTimerRef.current = setTimeout(() => {
+        goToEditor();
+      }, 1500);
+
+    } catch (e) {
+      console.error(e);
+      setIsProcessing(false);
+      setUploadComplete(false);
+      setProgressText(null);
+    }
+  };
+
+  // Limpiar el timer si el componente se desmonta antes
+  useEffect(() => {
+    return () => {
+      if (forceNavTimerRef.current) clearTimeout(forceNavTimerRef.current);
+    };
+  }, []);
 
   const total = Math.max(filesAntes.length, filesDespues.length);
   const arrayRange = Array.from({ length: total }, (_, i) => i);
@@ -90,7 +167,7 @@ export default function MassUploadPage() {
   return (
     <Container size="lg" py="xl">
       <Box pos="sticky" top={60} bg="var(--mantine-color-body)" pb="sm" pt="md" style={{ borderBottom: '1px solid var(--mantine-color-default-border)', zIndex: 100 }}>
-        <Button variant="subtle" color="gray" leftSection={<IconChevronLeft size={16} />} onClick={() => navigate(`/reportes/${reporteId}/circuitos/${circuitoId}/pares`)} mb="xs" px={0} disabled={isProcessing}>
+        <Button variant="subtle" color="gray" leftSection={<IconChevronLeft size={16} />} onClick={() => navigate(`/reportes/${reporteId}/circuitos/${circuitoId}/pares`)} mb="xs" disabled={isProcessing}>
           Volver al Editor de Pares
         </Button>
         <Group justify="space-between" align="flex-start" mb="sm">
@@ -99,6 +176,7 @@ export default function MassUploadPage() {
               <Box>
                  <Text size="sm" fw={500} mb={4}>Calidad de Evidencia</Text>
                  <SegmentedControl
+                    aria-label="Calidad de evidencia"
                     value={compressionLevel}
                     onChange={(val) => setCompressionLevel(val)}
                     data={[
@@ -112,12 +190,41 @@ export default function MassUploadPage() {
            
            <Group mt="md" gap="xs">
              {isProcessing && progressText && (
-               <Text size="xs" c="green" fw={600} mr="xs">{progressText}</Text>
+               <Text size="xs" c={uploadComplete ? 'teal' : 'green'} fw={600} mr="xs">{progressText}</Text>
              )}
-             <Text c="dimmed" size="sm" display={{ base: 'none', sm: 'block' }}>Listos: <b>{total}</b> pares</Text>
-             <Button color="green" size="sm" leftSection={<IconPlayerPlay size={16} />} loading={isProcessing} disabled={total === 0} onClick={handleProcessMass} px={showText ? undefined : 'xs'} miw={showText ? 140 : 50}>
-               {showText ? 'Aprobar Carga' : null}
-             </Button>
+             {/* Botón de escape manual: visible en cuanto el lote termina */}
+             {uploadComplete && (
+               <Button
+                 color="teal"
+                 size="sm"
+                 variant="filled"
+                 rightSection={<IconArrowRight size={16} />}
+                 onClick={goToEditor}
+                 aria-label="Ir al editor de pares"
+                 title="Ir al editor de pares"
+               >
+                 Ir al Editor
+               </Button>
+             )}
+             {!uploadComplete && (
+               <>
+                 <Text c="dimmed" size="sm" display={{ base: 'none', sm: 'block' }}>Listos: <b>{total}</b> pares</Text>
+                  <Button
+                    aria-label="Aprobar carga de imágenes"
+                    title="Aprobar carga de imágenes"
+                    color="green"
+                    size="sm"
+                    loading={isProcessing}
+                    disabled={total === 0}
+                    onClick={handleProcessMass}
+                    leftSection={showText ? <IconPlayerPlay size={16} /> : undefined}
+                    px={showText ? undefined : 'xs'}
+                    miw={showText ? 140 : 50}
+                  >
+                    {showText ? 'Aprobar Carga' : <IconPlayerPlay size={16} />}
+                  </Button>
+               </>
+             )}
            </Group>
         </Group>
 
@@ -130,6 +237,9 @@ export default function MassUploadPage() {
                style={{ borderStyle: 'dashed', borderWidth: 2 }} 
                bg="gray.0"
                radius="sm"
+               title="Área de carga de imágenes antes"
+               aria-label="Cargar fotos del ANTES"
+               inputProps={{ 'aria-label': 'Seleccionar imágenes del antes', title: 'Seleccionar imágenes del antes' }}
             >
                 <Center h={45} style={{ pointerEvents: 'none' }}>
                   <Dropzone.Accept>
@@ -165,6 +275,9 @@ export default function MassUploadPage() {
                style={{ borderStyle: 'dashed', borderWidth: 2 }} 
                bg="gray.0"
                radius="sm"
+               title="Área de carga de imágenes después"
+               aria-label="Cargar fotos del DESPUÉS"
+               inputProps={{ 'aria-label': 'Seleccionar imágenes del después', title: 'Seleccionar imágenes del después' }}
             >
                 <Center h={45} style={{ pointerEvents: 'none' }}>
                   <Dropzone.Accept>
@@ -217,6 +330,7 @@ export default function MassUploadPage() {
                              style={{ position: 'absolute', top: 8, right: 8, zIndex: 10 }} 
                              onClick={() => removePair(idx)}
                              title="Descartar este par por completo"
+                             aria-label="Descartar este par por completo"
                          >
                             <IconTrash size={12} />
                          </ActionIcon>
@@ -227,8 +341,8 @@ export default function MassUploadPage() {
                             <Box>
                                {fileA ? (
                                   <Box pos="relative">
-                                     <Image src={URL.createObjectURL(fileA)} height={100} radius="sm" fit="cover" />
-                                     <ActionIcon color="red" variant="default" size="xs" style={{ position: 'absolute', bottom: 4, right: 4 }} onClick={() => removeFileAntes(idx)} title="Purgar imagen aisaladamente y desplazar panel hacia arriba">
+                                     <ImagePreview file={fileA} height={100} alt={`Vista previa del antes, par ${idx + 1}`} />
+                                     <ActionIcon color="red" variant="default" size="xs" style={{ position: 'absolute', bottom: 4, right: 4 }} onClick={() => removeFileAntes(idx)} title="Purgar imagen del antes y desplazar" aria-label="Purgar imagen de antes">
                                         <IconArrowUp size={12} color="red" />
                                      </ActionIcon>
                                   </Box>
@@ -242,8 +356,8 @@ export default function MassUploadPage() {
                             <Box>
                                {fileB ? (
                                   <Box pos="relative">
-                                     <Image src={URL.createObjectURL(fileB)} height={100} radius="sm" fit="cover" />
-                                     <ActionIcon color="red" variant="default" size="xs" style={{ position: 'absolute', bottom: 4, right: 4 }} onClick={() => removeFileDespues(idx)} title="Purgar imagen aisaladamente y desplazar panel hacia arriba">
+                                     <ImagePreview file={fileB} height={100} alt={`Vista previa del después, par ${idx + 1}`} />
+                                     <ActionIcon color="red" variant="default" size="xs" style={{ position: 'absolute', bottom: 4, right: 4 }} onClick={() => removeFileDespues(idx)} title="Purgar imagen del después y desplazar" aria-label="Purgar imagen de después">
                                         <IconArrowUp size={12} color="red" />
                                      </ActionIcon>
                                   </Box>

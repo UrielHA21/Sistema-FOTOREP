@@ -215,17 +215,17 @@ export default function ImageEditorModal({ opened, onClose, imageUrl, onSave }: 
 
           <Group gap="xs">
             <Tooltip label="Foco Central (Auto 4:3)" withArrow>
-              <ActionIcon size="xl" variant="light" color="blue" onClick={() => handleFocus()}>
+              <ActionIcon size="xl" variant="light" color="blue" onClick={() => handleFocus()} aria-label="Foco central" title="Foco central">
                 <IconFocusCentered />
               </ActionIcon>
             </Tooltip>
             <Tooltip label="Rotar +90º" withArrow>
-              <ActionIcon size="xl" variant="default" onClick={handleRotate}>
+              <ActionIcon size="xl" variant="default" onClick={handleRotate} aria-label="Rotar 90 grados" title="Rotar 90 grados">
                 <IconRotateClockwise />
               </ActionIcon>
             </Tooltip>
             <Tooltip label="Espejo Horizontal" withArrow>
-              <ActionIcon size="xl" variant="default" onClick={handleMirror}>
+              <ActionIcon size="xl" variant="default" onClick={handleMirror} aria-label="Espejo horizontal" title="Espejo horizontal">
                 <IconFlipHorizontal />
               </ActionIcon>
             </Tooltip>
@@ -235,9 +235,9 @@ export default function ImageEditorModal({ opened, onClose, imageUrl, onSave }: 
             <Stack gap={4} w="100%">
               <Text size="xs" c="dimmed" ta="right">Zoom: {Math.round(scale * 100)}%</Text>
               <Group gap="xs" wrap="nowrap">
-                <ActionIcon size="sm" variant="default" onClick={() => setScale(s => Math.max(0.5, s - 0.1))}>-</ActionIcon>
+                <ActionIcon size="sm" variant="default" onClick={() => setScale(s => Math.max(0.5, s - 0.1))} aria-label="Alejar zoom" title="Alejar zoom">-</ActionIcon>
                 <Slider flex={1} min={0.5} max={3} step={0.1} value={scale} onChange={setScale} label={null} color="gray" size="sm" />
-                <ActionIcon size="sm" variant="default" onClick={() => setScale(s => Math.min(3, s + 0.1))}>+</ActionIcon>
+                <ActionIcon size="sm" variant="default" onClick={() => setScale(s => Math.min(3, s + 0.1))} aria-label="Acercar zoom" title="Acercar zoom">+</ActionIcon>
               </Group>
             </Stack>
           </Group>

@@ -40,7 +40,7 @@ export default function AppLayout() {
           </Group>
           <Menu shadow="md" width={220} position="bottom-end">
             <Menu.Target>
-              <ActionIcon variant="transparent" size="lg">
+              <ActionIcon variant="transparent" size="lg" aria-label="Menú de perfil" title="Menú de perfil">
                 <Avatar color={isAdmin ? 'orange' : 'blue'} radius="xl" name={user?.email || 'User'} />
               </ActionIcon>
             </Menu.Target>

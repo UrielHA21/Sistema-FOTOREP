@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useBlocker } from 'react-router-dom';
-import { Container, Grid, Title, Text, Tabs, Paper, Table, Checkbox, Radio, Button, Box, Loader, Center, Group, NumberInput, Progress, ScrollArea } from '@mantine/core';
-import { IconFileTypePdf, IconFileZip, IconChevronLeft } from '@tabler/icons-react';
+import { Container, Grid, Title, Text, Tabs, Paper, Table, Checkbox, Radio, Button, Box, Loader, Center, Group, NumberInput, Progress, ScrollArea, Alert, Badge } from '@mantine/core';
+import { IconFileTypePdf, IconFileZip, IconChevronLeft, IconLock } from '@tabler/icons-react';
 import { useMediaQuery } from '@mantine/hooks';
 import { collection, getDocs, query, orderBy, getDoc, doc } from 'firebase/firestore';
 import { db } from '../../core/firebase';
 import { useZipExport } from './hooks/useZipExport';
+import { getReporteColor, getReporteLabel } from '../reports/hooks/useEstadoWorkflow';
 
 interface CircuitoResumen {
    id: string;
@@ -106,6 +107,12 @@ export default function ExportacionPage() {
 
    if (loading) return <Center h="50vh"><Loader color="blue" /></Center>;
 
+   const estadoReporte = reporteMeta?.estado || 'borrador';
+   // PDF: sólo cuando está Completado
+   const pdfDisabled = estadoReporte !== 'completado';
+   // ZIP/Preview: sólo cuando está En Revisión o Completado
+   const zipDisabled = estadoReporte === 'borrador';
+
    const circuitosSeleccionados = circuitos.filter(c => selectedCircuits.includes(c.id));
    const totalParesAExportar = circuitosSeleccionados.reduce((sum, c) => sum + (exportQuantities[c.id] || 0), 0);
 
@@ -115,12 +122,30 @@ export default function ExportacionPage() {
 
    return (
       <Container size="xl" py="xl">
-         <Button variant="subtle" color="gray" leftSection={<IconChevronLeft size={16} />} onClick={() => navigate('/')} mb="md" px={0} disabled={isExporting}>
+         <Button variant="subtle" color="gray" leftSection={<IconChevronLeft size={16} />} onClick={() => navigate('/')} mb="md" disabled={isExporting}>
             Volver al Dashboard
          </Button>
 
          <Title order={1} mb={4}>Exportación de Datos</Title>
-         <Text c="dimmed" mb="xl">Configura y genera los entregables a partir de los circuitos seleccionados.</Text>
+         <Text c="dimmed" mb="sm">Configura y genera los entregables a partir de los circuitos seleccionados.</Text>
+
+         {/* Banner de estado del reporte */}
+         <Alert
+           icon={estadoReporte === 'completado' ? <IconFileTypePdf size={16} /> : <IconLock size={16} />}
+           color={getReporteColor(estadoReporte)}
+           mb="xl"
+           variant="light"
+           title={
+             <Group gap="xs">
+               <Text fw={600} size="sm">Estado del Reporte:</Text>
+               <Badge color={getReporteColor(estadoReporte)} variant="filled" size="sm">{getReporteLabel(estadoReporte)}</Badge>
+             </Group>
+           }
+         >
+           {estadoReporte === 'borrador' && 'El reporte está en Borrador. Marca los circuitos como completados, luego ve a "Circuitos" y presiona "Marcar en Revisión" para habilitar la exportación ZIP.'}
+           {estadoReporte === 'en_revision' && 'En Revisión: puedes descargar el ZIP y previsualizar. Para habilitar el PDF, marca el reporte como "Completado" desde la página de Circuitos.'}
+           {estadoReporte === 'completado' && '¡Reporte Completado! Todas las opciones de exportación están habilitadas, incluyendo la generación del PDF final.'}
+         </Alert>
 
          <Grid>
             <Grid.Col span={{ base: 12, md: 8 }}>
@@ -221,8 +246,13 @@ export default function ExportacionPage() {
                            navigate(`/reportes/${reporteId}/exportar/pdf`, {
                               state: { selectedCircuits, exportQuantities, paresPorHoja }
                            });
-                        }} disabled={selectedCircuits.length === 0}>
-                           Generar Reporte PDF →
+                        }} disabled={selectedCircuits.length === 0 || pdfDisabled}
+                          title={pdfDisabled ? 'El reporte debe estar en estado Completado para generar el PDF' : undefined}
+                        >
+                           {pdfDisabled
+                             ? <Group gap={6}><IconLock size={16} />Requiere estado Completado</Group>
+                             : 'Generar Reporte PDF →'
+                           }
                         </Button>
                      </>
                   ) : (
@@ -257,8 +287,16 @@ export default function ExportacionPage() {
                            </Group>
                         </Box>
 
-                        <Button color="teal" fullWidth size="md" onClick={() => downloadCircuitZip(reporteId || '', reporteMeta?.areaNombre || reporteId || '', selectedCircuits, exportQuantities, circuitosNombres)} loading={isExporting} disabled={selectedCircuits.length === 0}>
-                           Descargar Imágenes (.zip)
+                        <Button color="teal" fullWidth size="md"
+                          onClick={() => downloadCircuitZip(reporteId || '', reporteMeta?.areaNombre || reporteId || '', selectedCircuits, exportQuantities, circuitosNombres)}
+                          loading={isExporting}
+                          disabled={selectedCircuits.length === 0 || zipDisabled}
+                          title={zipDisabled ? 'El reporte debe estar en "En Revisión" o "Completado" para descargar el ZIP' : undefined}
+                        >
+                           {zipDisabled
+                             ? <Group gap={6}><IconLock size={16} />Requiere En Revisión o superior</Group>
+                             : 'Descargar Imágenes (.zip)'
+                           }
                         </Button>
 
                         {isExporting && (

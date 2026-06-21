@@ -1,10 +1,11 @@
-import { Card, Badge, Group, Title, Text, Button, ActionIcon, Menu } from '@mantine/core';
+import { Card, Badge, Group, Title, Text, Button, ActionIcon, Menu, Tooltip } from '@mantine/core';
 import { useNavigate } from 'react-router-dom';
 import { modals } from '@mantine/modals';
 import { IconDotsVertical, IconEdit, IconTrash, IconDownload, IconListDetails } from '@tabler/icons-react';
 import { useAccessibilityStore } from '../../accessibility/store';
 import { useMediaQuery } from '@mantine/hooks';
 import type { Reporte } from '../hooks/useReportsList';
+import { getReporteColor, getReporteLabel } from '../hooks/useEstadoWorkflow';
 
 interface ReportCardProps {
   reporte: Reporte;
@@ -17,6 +18,10 @@ export default function ReportCard({ reporte, onEliminar, onEdit }: ReportCardPr
   const { simpleMode } = useAccessibilityStore();
   const isMobile = useMediaQuery('(max-width: 48em)'); // 768px = sm
   const showText = !isMobile && !simpleMode;
+
+  const estado = reporte.estado || 'borrador';
+  // La exportación está deshabilitada sólo si el reporte está en 'borrador'
+  const exportDisabled = estado === 'borrador';
 
   const handleEdit = () => {
     navigate(`/reportes/${reporte.id}/circuitos`);
@@ -38,8 +43,8 @@ export default function ReportCard({ reporte, onEliminar, onEdit }: ReportCardPr
     <Card shadow="sm" padding="lg" radius="md" withBorder>
       <Group justify="space-between" mb="xs">
         <Group gap="xs">
-           <Badge color="gray" variant="light">
-             {(reporte.estado || 'BORRADOR').toUpperCase()}
+           <Badge color={getReporteColor(estado)} variant="light">
+             {getReporteLabel(estado)}
            </Badge>
            <Badge color="blue" variant="outline">
              TIPO {reporte.tipoFormato || 'FORMATO'}
@@ -51,7 +56,7 @@ export default function ReportCard({ reporte, onEliminar, onEdit }: ReportCardPr
            
            <Menu position="bottom-end" shadow="sm">
               <Menu.Target>
-                 <ActionIcon variant="subtle" color="gray" size="sm">
+                 <ActionIcon variant="subtle" color="gray" size="sm" aria-label="Opciones de reporte" title="Opciones de reporte">
                     <IconDotsVertical size={16} />
                  </ActionIcon>
               </Menu.Target>
@@ -91,22 +96,35 @@ export default function ReportCard({ reporte, onEliminar, onEdit }: ReportCardPr
           variant="light" 
           color="blue" 
           onClick={handleEdit}
-          leftSection={<IconListDetails size={18} />}
           title={!showText ? "Editar Circuitos" : undefined}
           aria-label="Editar Circuitos"
+          leftSection={showText ? <IconListDetails size={18} /> : undefined}
+          px={showText ? undefined : 'xs'}
         >
-          {showText && "Editar Circuitos"}
+          {showText ? "Editar Circuitos" : <IconListDetails size={18} />}
         </Button>
-        <Button 
-          variant="light" 
-          color="indigo" 
-          leftSection={<IconDownload size={18} />} 
-          onClick={() => navigate(`/reportes/${reporte.id}/exportar`)}
-          title={!showText ? "Exportar" : undefined}
-          aria-label="Exportar"
+
+        {/* El botón de exportar se deshabilita si el reporte está en borrador */}
+        <Tooltip
+          label={exportDisabled ? 'Marca el reporte como "En Revisión" para habilitar la exportación' : 'Exportar'}
+          disabled={!exportDisabled}
+          withArrow
         >
-          {showText && "Exportar"}
-        </Button>
+          <Button 
+            variant="light" 
+            color="indigo" 
+            onClick={() => navigate(`/reportes/${reporte.id}/exportar`)}
+            title={!showText ? "Exportar" : undefined}
+            aria-label="Exportar"
+            disabled={exportDisabled}
+            data-disabled={exportDisabled}
+            style={exportDisabled ? { pointerEvents: 'none' } : undefined}
+            leftSection={showText ? <IconDownload size={18} /> : undefined}
+            px={showText ? undefined : 'xs'}
+          >
+            {showText ? "Exportar" : <IconDownload size={18} />}
+          </Button>
+        </Tooltip>
       </Group>
     </Card>
   );

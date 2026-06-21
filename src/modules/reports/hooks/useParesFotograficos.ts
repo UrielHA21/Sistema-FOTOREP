@@ -42,9 +42,11 @@ export function useParesFotograficos(reporteId: string | undefined, circuitoId: 
     return () => unsubscribe();
   }, [reporteId, circuitoId]);
 
-  const crearParVacio = async (skipIncrement: boolean = false) => {
+  const crearParVacio = async (skipIncrement: boolean = false, forcedOrden?: number) => {
     if (!reporteId || !circuitoId) throw new Error("Faltan IDs estructurales.");
-    const nextOrden = pares.length > 0 ? Math.max(...pares.map(p => p.orden)) + 1 : 1;
+    const nextOrden = typeof forcedOrden === 'number' 
+      ? forcedOrden 
+      : (pares.length > 0 ? Math.max(...pares.map(p => p.orden)) + 1 : 1);
     const docRef = await addDoc(collection(db, 'reportes', reporteId, 'circuitos', circuitoId, 'pares'), {
       urlAntes: null,
       urlDespues: null,
@@ -69,7 +71,10 @@ export function useParesFotograficos(reporteId: string | undefined, circuitoId: 
       const storageRef = ref(storage, `reportes/${reporteId}/circuitos/${circuitoId}/pares/${timestamp}_${lado}.jpg`);
       
       const optimizedFile = await optimizeImage(file, qualityLevel);
-      const snap = await uploadBytes(storageRef, optimizedFile);
+      const snap = await uploadBytes(storageRef, optimizedFile, {
+        contentType: 'image/jpeg',
+        cacheControl: 'public, max-age=31536000, immutable'
+      });
       const downloadUrl = await getDownloadURL(snap.ref);
 
       const updateRef = doc(db, 'reportes', reporteId, 'circuitos', circuitoId, 'pares', parId);
@@ -120,19 +125,44 @@ export function useParesFotograficos(reporteId: string | undefined, circuitoId: 
     const totalPares = Math.max(filesAntes.length, filesDespues.length);
     if (totalPares === 0) return;
 
+    // Calcular total de imágenes individuales para el progreso granular
+    const totalImagenes = filesAntes.filter(Boolean).length + filesDespues.filter(Boolean).length;
+    if (totalImagenes === 0) return;
+
+    let completadas = 0;
+    const trackingProgress = () => {
+      completadas++;
+      onProgress(completadas, totalImagenes);
+    };
+
+    // Base orden inicial para calcularlo sin colisión en subidas paralelas
+    const baseOrden = pares.length > 0 ? Math.max(...pares.map(p => p.orden)) + 1 : 1;
+
+    const uploadPromises = [];
+
+    // Helper para procesar una mitad y notificar su progreso de forma independiente
+    const subirMitadTracked = async (parId: string, lado: 'antes' | 'despues', file: File) => {
+      await actualizarMitadPar(parId, lado, file, qualityLevel);
+      trackingProgress();
+    };
+
     for (let i = 0; i < totalPares; i++) {
-        onProgress(i + 1, totalPares);
-        const newParId = await crearParVacio(true); // Saltamos incremento invididual para evitar N requests web
-        const promises = [];
+      const uploadPair = async () => {
+        const newParId = await crearParVacio(true, baseOrden + i);
+        const pairPromises = [];
         if (filesAntes[i]) {
-            promises.push(actualizarMitadPar(newParId, 'antes', filesAntes[i], qualityLevel));
+          pairPromises.push(subirMitadTracked(newParId, 'antes', filesAntes[i]));
         }
         if (filesDespues[i]) {
-            promises.push(actualizarMitadPar(newParId, 'despues', filesDespues[i], qualityLevel));
+          pairPromises.push(subirMitadTracked(newParId, 'despues', filesDespues[i]));
         }
-        // Subida en paralelo del lado izq/der del par actual, espera su finalizacion antes de saltar la iteracion
-        await Promise.all(promises); 
+        await Promise.all(pairPromises);
+      };
+      uploadPromises.push(uploadPair());
     }
+
+    // Ejecutar la subida de todos los pares en paralelo
+    await Promise.all(uploadPromises);
 
     // Unico Golpe Maestro para registrar la contabilidad
     await updateDoc(doc(db, 'reportes', reporteId!, 'circuitos', circuitoId!), {

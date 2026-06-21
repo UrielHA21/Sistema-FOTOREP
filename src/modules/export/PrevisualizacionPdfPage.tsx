@@ -20,9 +20,9 @@ export default function PrevisualizacionPdfPage() {
   const { state } = useLocation();
 
   // Leer estado inyectado desde ExportacionPage
-  const circuitosAExportar: string[]            = state?.selectedCircuits || [];
+  const circuitosAExportar: string[] = state?.selectedCircuits || [];
   const exportQuantities: Record<string, number> = state?.exportQuantities || {};
-  const paresPorHojaInicial: string             = state?.paresPorHoja     || '3';
+  const paresPorHojaInicial: string = state?.paresPorHoja || '3';
 
   const { isLoading, reporteMeta, paresPlanos, firmaRealiza, firmaRevisa } = usePreviewData(
     reporteId,
@@ -134,7 +134,6 @@ export default function PrevisualizacionPdfPage() {
                 color="gray"
                 leftSection={<IconChevronLeft size={16} />}
                 onClick={() => navigate(`/reportes/${reporteId}/exportar`)}
-                px={0}
                 style={{ flexShrink: 0 }}
                 disabled={isGenerating}
               >
@@ -157,6 +156,8 @@ export default function PrevisualizacionPdfPage() {
                   variant={viewMode === 'una' ? 'filled' : 'default'}
                   color={viewMode === 'una' ? 'blue' : 'gray'}
                   onClick={() => setViewMode('una')}
+                  aria-label="Ajustar a hoja completa"
+                  title="Ajustar a hoja completa"
                 >
                   <IconFile size={18} />
                 </ActionIcon>
@@ -166,6 +167,8 @@ export default function PrevisualizacionPdfPage() {
                   variant={viewMode === 'ancho' ? 'filled' : 'default'}
                   color={viewMode === 'ancho' ? 'blue' : 'gray'}
                   onClick={() => setViewMode('ancho')}
+                  aria-label="Ajustar al ancho de página"
+                  title="Ajustar al ancho de página"
                 >
                   <IconArrowsHorizontal size={18} />
                 </ActionIcon>
@@ -214,11 +217,11 @@ export default function PrevisualizacionPdfPage() {
         ) : (
           <Box style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2rem' }}>
             {paginasRenderizadas.map((chunk, index) => (
-              <Box 
-                key={`wrapper-${index}`} 
-                style={{ 
+              <Box
+                key={`wrapper-${index}`}
+                style={{
                   ...sheetContainerStyle,
-                  marginBottom: `calc(${BASE_SHEET_H}px * (${zoomFactor} - 1) + 20px)` 
+                  marginBottom: `calc(${BASE_SHEET_H}px * (${zoomFactor} - 1) + 20px)`
                 }}
               >
                 <PrintableSheet

@@ -60,8 +60,8 @@ export function useGeneratePDF() {
     disenoHoja: number
   ) => {
     // Build dynamic filename following the institutional standard
-    const areaNombre   = (reporteMeta?.areaNombre   || 'AREA').toString().trim();
-    const tipoFormato  = (reporteMeta?.tipoFormato  || 'N').toString().trim();
+    const areaNombre = (reporteMeta?.areaNombre || 'AREA').toString().trim();
+    const tipoFormato = (reporteMeta?.tipoFormato || 'N').toString().trim();
     // Sanitize: replace characters that are invalid in filenames
     const sanitize = (s: string) => s.replace(/[<>:"/\\|?*]/g, '').replace(/\s+/g, ' ').trim();
     const nombreArchivo = `FORMATO DE FOTOS ${sanitize(areaNombre)} TIPO ${sanitize(tipoFormato)}.pdf`;
@@ -96,24 +96,24 @@ export function useGeneratePDF() {
 
       // ── C: Build meta payload ──
       const metaPayload: ReporteMetaPayload = {
-        zona:        reporteMeta?.zonaNombre        || reporteMeta?.zona        || '—',
-        area:        reporteMeta?.areaNombre        || reporteMeta?.area        || '—',
-        circuito:    reporteMeta?.circuitoNombre    || reporteMeta?.circuito    || '—',
-        estimacion:  reporteMeta?.numeroEstimacion  || reporteMeta?.estimacion  || '—',
-        fecha:       reporteMeta?.fecha
-                       ? new Date(reporteMeta.fecha.seconds * 1000).toLocaleDateString('es-MX')
-                       : new Date().toLocaleDateString('es-MX'),
-        tipoFormato: reporteMeta?.tipoFormato        || '',
+        zona: reporteMeta?.zonaNombre || reporteMeta?.zona || '—',
+        area: reporteMeta?.areaNombre || reporteMeta?.area || '—',
+        circuito: reporteMeta?.circuitoNombre || reporteMeta?.circuito || '—',
+        estimacion: reporteMeta?.numeroEstimacion || reporteMeta?.estimacion || '—',
+        fecha: reporteMeta?.fecha
+          ? new Date(reporteMeta.fecha.seconds * 1000).toLocaleDateString('es-MX')
+          : new Date().toLocaleDateString('es-MX'),
+        tipoFormato: reporteMeta?.tipoFormato || '',
       };
 
       // Ensure cargo fields are never null/undefined (Cloud Function expects strings)
       const firmaRealizaSafe: FirmaMeta = {
         nombre: firmaRealiza.nombre || '',
-        cargo:  firmaRealiza.cargo  || '',
+        cargo: firmaRealiza.cargo || '',
       };
       const firmaRevisaSafe: FirmaMeta = {
         nombre: firmaRevisa.nombre || '',
-        cargo:  firmaRevisa.cargo  || '',
+        cargo: firmaRevisa.cargo || '',
       };
 
       const payload: CloudFunctionPayload = {
@@ -138,11 +138,11 @@ export function useGeneratePDF() {
         link.href = result.data.url;
         link.setAttribute('target', '_blank'); // Respaldo seguro
         link.setAttribute('download', result.data.fileName || 'Reporte_FOTOREP.pdf');
-        
+
         // Es imperativo agregarlo al DOM para que funcione en Firefox y Chrome
         document.body.appendChild(link);
         link.click();
-        
+
         // Limpiar el DOM
         link.parentNode?.removeChild(link);
       } else {

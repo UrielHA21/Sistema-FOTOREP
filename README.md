@@ -45,3 +45,54 @@ El código fuente sigue un patrón de diseño modular para facilitar su escalabi
 │   └── src/index.ts     # Lógica central del motor de procesamiento PDF
 └── package.json         # Dependencias y configuración del entorno
 
+## Novedades y Optimizaciones Recientes
+
+El sistema cuenta con un conjunto de optimizaciones enfocadas en rendimiento de red, accesibilidad universal (WCAG), compatibilidad de navegadores y seguridad en producción:
+
+### 1. Rendimiento y Optimización en Carga Masiva
+* **Procesamiento en Paralelo (`Promise.all`):** Refactorización del flujo de carga masiva en [useParesFotograficos.ts](file:///D:/andre/proyectos%20vs/Sistema%20Inteligente%20REP/fotorep-frontend/src/modules/reports/hooks/useParesFotograficos.ts) para enviar peticiones concurrentes a Firebase Storage y Firestore en lugar de realizarlas secuencialmente, maximizando la eficiencia de carga de archivos en lotes.
+* **Metadatos y Cabeceras en Firebase Storage:** Se configuró la subida de archivos en [useParesFotograficos.ts](file:///D:/andre/proyectos%20vs/Sistema%20Inteligente%20REP/fotorep-frontend/src/modules/reports/hooks/useParesFotograficos.ts) agregando metadatos explícitos (`contentType: 'image/jpeg'` y `cacheControl: 'public, max-age=31536000, immutable'`) a la llamada de `uploadBytes`. Esto garantiza que Google Storage sirva los recursos de imagen con el tipo de medio correcto (evitando advertencias de tipo `application/json` o `text/plain`) y almacenamiento persistente en caché óptimo.
+* **Compresión Confiable de Imágenes:** Se configuró el optimizador local en [imageOptimizer.ts](file:///D:/andre/proyectos%20vs/Sistema%20Inteligente%20REP/fotorep-frontend/src/shared/utils/imageOptimizer.ts) para realizar la compresión en el hilo principal (`useWebWorker: false`), eliminando bloqueos y fallas de inicialización de Web Workers en navegadores restringidos o bajo conexiones saturadas.
+* **Control del Ciclo de Vida de Previsualización:** El renderizado de previsualizaciones locales en [MassUploadPage.tsx](file:///D:/andre/proyectos%20vs/Sistema%20Inteligente%20REP/fotorep-frontend/src/modules/reports/MassUploadPage.tsx) se encapsuló en un componente autónomo (`ImagePreview`) que libera recursos de memoria mediante `URL.revokeObjectURL` al desmontarse, mitigando la sobrecarga y fugas de memoria en el navegador.
+* **Progreso Granular por Imagen:** El visualizador de carga reporta ahora el estado individual de cada imagen procesada (ej. *"Procesando foto 3 de 10..."*) en tiempo real, en lugar de hacerlo de forma agrupada por par completo, eliminando la percepción de congelamiento de la aplicación.
+
+### 2. Accesibilidad Universal y Widget Flotante (WCAG)
+* **Widget de Accesibilidad Dinámico:** Incorporación de un control flotante y arrastrable lateralmente que inyecta en el tema de la aplicación configuraciones como:
+  * **Alto Contraste:** Paleta de colores oscura especial con la identidad visual de CFE que cumple con el estándar de relación de contraste WCAG.
+  * **Escalado de Texto:** Incremento dinámico de la escala de la tipografía global para legibilidad.
+  * **Fuente para Dislexia:** Configuración alternativa de la tipografía para facilitar la lectura.
+  * **Modo Minimalista:** Colapso responsivo de los botones de acción para mostrar exclusivamente iconos (ahorrando espacio en pantallas táctiles) y simplificación de las interfaces.
+* **Estandarización de Controles y Botones Interactivos:** 
+  * Se inyectaron atributos `aria-label` y `title` en todos los elementos interactivos `ActionIcon` de la aplicación (menú flotante, botones de edición en tablas, controles de rotación/espejo/zoom en el editor de imágenes, menú de usuario y borrado), asegurando un nombre descriptivo discernible para lectores de pantalla ("Buttons must have discernible text").
+  * Inyección de atributos `aria-label`, `title` y descripciones en componentes invisibles del DOM (como los inputs de archivos autogenerados de Dropzone) y tarjetas de previsualización para cumplir con las directivas de lectores de pantalla.
+
+### 3. Seguridad en la Nube y Políticas de Caché
+* **Directivas CSP en Producción:** Ajuste de las reglas de seguridad en [firebase.json](file:///D:/andre/proyectos%20vs/Sistema%20Inteligente%20REP/fotorep-frontend/firebase.json) agregando la directiva `worker-src 'self' blob; child-src 'self' blob;` para permitir la instanciación de Web Workers de manera controlada y habilitación de `frame-ancestors 'none'` para anular amenazas de clickjacking.
+* **Estrategias de Caché y Entrega de Recursos:**
+  * **Páginas de Aplicación (`index.html`):** Configurado con `Cache-Control: no-cache` para garantizar que los clientes carguen inmediatamente las actualizaciones y bundles más recientes.
+  * **Activos Compilados (`/assets/**`):** Forzado con `Cache-Control: public, max-age=31536000, immutable` para almacenamiento a largo plazo, complementado con hashes de cache-busting dinámicos de Vite.
+* **Mitigación de Cabeceras Obsoletas:** Reemplazo de herramientas vulnerables por directivas modernas, como la configuración de `X-Content-Type-Options: nosniff` y la anulación del filtro XSS antiguo mediante `X-XSS-Protection: 0`.
+
+### 4. Compatibilidad Global de CSS (Autoprefixer)
+* **Integración PostCSS:** Inclusión del procesador `autoprefixer` en la configuración de compilación en [vite.config.ts](file:///D:/andre/proyectos%20vs/Sistema%20Inteligente%20REP/fotorep-frontend/vite.config.ts). Esto asegura que propiedades de estilos experimentales o específicas de navegadores (como `appearance`, `text-size-adjust` o `text-wrap`) tengan sus prefijos correspondientes y funcionen de manera idéntica en Edge, Chrome, Safari y Firefox.
+
+### 5. Flujo de Trabajo, Control de Estados y Validaciones
+* **Ciclo de Vida de Reportes y Circuitos:** Implementación de un flujo lógico de estados secuenciales y validados para estructurar la revisión:
+  * **Estados de Circuito:** `Pendiente` (por defecto al crear), `En Progreso` (transiciona automáticamente al cargar fotos masivas), y `Realizado` (marcado explícitamente mediante el botón en el Editor de Imágenes).
+  * **Estados de Reporte:** `Borrador` (inicial), `En Revisión` (se activa únicamente cuando todos los circuitos están en `En Progreso` o `Realizado`), y `Completado` (se alcanza si todos los circuitos están marcados como `Realizado`).
+* **Validación de Exportación:** Seguridad contra descargas de reportes incompletos. El botón de exportación (ZIP/PDF) en [ExportacionPage.tsx](file:///D:/andre/proyectos%20vs/Sistema%20Inteligente%20REP/fotorep-frontend/src/modules/export/ExportacionPage.tsx) permanece deshabilitado si el reporte está en estado `Borrador`, requiriendo estar en `En Revisión` o `Completado`.
+* **Consolidación de Acciones:** Se reemplazó el botón "Descargar ZIP" del editor de imágenes por el botón de control de estado del circuito ("Marcar como Realizado"), delegando las tareas de exportación al módulo unificado correspondiente.
+
+### 6. Búsqueda Inteligente Adaptativa y Mejoras de Usabilidad
+* **Búsqueda Compuesta (`useSmartSearch.ts`):** Nuevo hook que parsea cadenas libres en tokens lógicos en [useSmartSearch.ts](file:///D:/andre/proyectos%20vs/Sistema%20Inteligente%20REP/fotorep-frontend/src/modules/reports/hooks/useSmartSearch.ts):
+  * Permite combinar parámetros como tipo de formato ("tipo a", "tb"), estado ("borrador", "en revision"), o texto libre (nombre de zona, área, revisor o estimación) en una sola consulta estructurada (ej. `"villaflores b"`, `"borrador tipo a ing"`).
+  * Soporta normalización (insensibilidad a mayúsculas, minúsculas y acentos) y aliases.
+* **Componentes de Búsqueda Interactivos (Dashboard):** La barra de búsqueda inteligente en [DashboardPage.tsx](file:///D:/andre/proyectos%20vs/Sistema%20Inteligente%20REP/fotorep-frontend/src/modules/reports/DashboardPage.tsx) incluye ahora:
+  * Chips de colores dinámicos que muestran visualmente los filtros identificados (Tipo de Formato, Estado, Texto Libre).
+  * Contador en tiempo real de resultados coincidentes.
+  * Pantalla de estado vacío ("Sin resultados") con sugerencias.
+  * Soporte de teclado (ejecución con `Enter`, borrado rápido con `Esc` o botón "X").
+* **Consistencia de Espaciado y Alineación en UI:**
+  * **Modo Minimalista Corregido:** Se solucionó el desplazamiento a la izquierda de los iconos en botones pequeños cuando el texto se ocultaba. Ahora el contenido se centra simétricamente evaluando la propiedad `showText` para centrar directamente el componente `<Icon />` sin el margen de `leftSection`.
+  * **Corrección de Padding:** Remoción de la propiedad limitante `px={0}` de todos los botones de retroceso ("Volver al Dashboard" y "Volver") en las vistas principales (`CircuitosPage`, `EditorParesPage`, `ExportacionPage`, `PrevisualizacionPdfPage`, `MassUploadPage`), eliminando la colisión del texto con los bordes del botón.
+  * **Iconografía Contextualizada:** Adición del icono `IconMapPin` junto al nombre de la zona/área y reemplazo del icono genérico de circuito (`IconPlug`) por `IconTree` (bosque/árboles) para ajustarse mejor a la naturaleza de la infraestructura.

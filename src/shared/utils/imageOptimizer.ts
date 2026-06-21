@@ -8,14 +8,14 @@ export function getCompressionOptions(level: CompressionLevel) {
       return {
         maxSizeMB: 1.5,
         maxWidthOrHeight: 1920,
-        useWebWorker: true,
+        useWebWorker: false,
         initialQuality: 0.8
       };
     case 'max':
       return {
         maxSizeMB: 0.5,
         maxWidthOrHeight: 1280,
-        useWebWorker: true,
+        useWebWorker: false,
         initialQuality: 0.6
       };
     case 'original':

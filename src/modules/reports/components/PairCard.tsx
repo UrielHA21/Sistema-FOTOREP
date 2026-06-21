@@ -131,10 +131,10 @@ export default function PairCard({ par, onUpdateHalf, onDelete, onSwap }: PairCa
 
           {/* Extremo Derecho: Acciones */}
           <Group gap="xs">
-            <ActionIcon variant="light" color="blue" onClick={() => onSwap && onSwap(par.id, par.urlAntes, par.urlDespues)} aria-label="Intercambiar">
+            <ActionIcon variant="light" color="blue" onClick={() => onSwap && onSwap(par.id, par.urlAntes, par.urlDespues)} aria-label="Intercambiar" title="Intercambiar fotos del antes y después">
               <IconArrowsExchange size={18} stroke={2} />
             </ActionIcon>
-            <ActionIcon variant="light" color="red" onClick={() => onDelete && onDelete(par.id)} aria-label="Eliminar">
+            <ActionIcon variant="light" color="red" onClick={() => onDelete && onDelete(par.id)} aria-label="Eliminar" title="Eliminar par fotográfico">
               <IconX size={18} stroke={2} />
             </ActionIcon>
           </Group>

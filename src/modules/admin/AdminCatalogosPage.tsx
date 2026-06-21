@@ -15,7 +15,7 @@ export default function AdminCatalogosPage() {
       <Group justify="space-between" mb="xl">
         <Title order={2}>Administración de Catálogos</Title>
         <Tooltip label="Configuración Global de Firma" position="left">
-          <ActionIcon variant="light" color="gray" size="lg" onClick={openConfigModal}>
+          <ActionIcon variant="light" color="gray" size="lg" onClick={openConfigModal} aria-label="Configuración Global de Firma" title="Configuración Global de Firma">
             <IconSettings size={18} />
           </ActionIcon>
         </Tooltip>
