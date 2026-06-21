@@ -44,9 +44,9 @@ El código fuente sigue un patrón de diseño modular para facilitar su escalabi
 ├── functions/
 │   └── src/index.ts     # Lógica central del motor de procesamiento PDF
 └── package.json         # Dependencias y configuración del entorno
+```
 
 ## Novedades y Optimizaciones Recientes
-
 El sistema cuenta con un conjunto de optimizaciones enfocadas en rendimiento de red, accesibilidad universal (WCAG), compatibilidad de navegadores y seguridad en producción:
 
 ### 1. Rendimiento y Optimización en Carga Masiva
